@@ -102,6 +102,9 @@ struct PDetailView: View {
             edit.buttonStyle(PBtn())
             Button("Mode faristol") { req = .stand(store.concertDocs(id), title(r)) }.buttonStyle(PBtn(kind: .primary))
             Button("PDF únic") { req = .package(store.concertDocs(id), title(r)) }.buttonStyle(PBtn())
+            if store.concertDocs(id).count > 1 {
+                NavigationLink { PConcertOrderView(concertId: id) } label: { Text("Ordre del programa") }.buttonStyle(PBtn())
+            }
             POfflineButton(docs: store.concertDocs(id), small: false)
             Button("Afegeix partitures de l'arxiu") { withAnimation { showPicker.toggle() } }.buttonStyle(PBtn())
             Button("Puja fitxers") { req = .upload(["Concert": id]) }.buttonStyle(PBtn())
@@ -144,7 +147,7 @@ struct PDetailView: View {
             if !Arxiu.fileId(r).isEmpty { PDocPreview(doc: r, req: $req).padding(.top, 12) }
         case "Concerts":
             if showPicker { PConcertPicker(concertId: id) { withAnimation { showPicker = false } } }
-            let cds = store.docsFor("Concert", id)
+            let cds = store.concertDocs(id).filter { Arxiu.splitTags($0["Concert"]).contains(id) }
             HStack(spacing: 6) {
                 h3("Repertori i partitures")
                 Text("\(cds.count)").font(.system(size: 13)).foregroundStyle(P.mute).padding(.top, 14)
@@ -526,6 +529,67 @@ struct PBookView: View {
                 toast(msg)
                 dismiss()
             } catch { toast("Error: " + error.localizedDescription) }
+        }
+    }
+}
+
+/// Ordre del programa d'un concert: el faristol, la tira d'Inici i el PDF únic el segueixen.
+struct PConcertOrderView: View {
+    let concertId: String
+    @ObservedObject private var store = PartituresStore.shared
+    @Environment(\.dismiss) private var dismiss
+    @State private var docs: [Fila] = []
+    @State private var saving = false
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                if !store.hasConcertOrder {
+                    PHint(text: "Per poder desar l'ordre, obre el full de l'arxiu, ves a la pestanya Concerts i escriu «Ordre» a la primera casella buida de la fila 1. Després toca Actualitza.")
+                        .padding(.bottom, 12)
+                }
+                PHint(text: "Posa les partitures en l'ordre del concert amb les fletxes.").padding(.bottom, 8)
+                VStack(spacing: 0) {
+                    ForEach(Array(docs.enumerated()), id: \.offset) { k, d in
+                        HStack(spacing: 10) {
+                            Text("\(k + 1)").font(.system(size: 13, weight: .semibold)).foregroundStyle(P.mute).frame(width: 22)
+                            PCover(doc: d, label: " ", showFormat: false, placeholderSize: 7).frame(width: 34)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(d["Títol"] ?? "").font(.system(size: 14, weight: .medium)).lineLimit(2)
+                                if let t = d["Tipus"], !t.isEmpty { Text(t).font(.system(size: 12)).foregroundStyle(P.mute) }
+                            }
+                            Spacer(minLength: 0)
+                            Button("↑") { move(k, k - 1) }.buttonStyle(PBtn(small: true)).disabled(k == 0)
+                            Button("↓") { move(k, k + 1) }.buttonStyle(PBtn(small: true)).disabled(k == docs.count - 1)
+                        }
+                        .padding(.vertical, 6)
+                        .overlay(alignment: .bottom) { Rectangle().fill(P.line).frame(height: 1) }
+                    }
+                }
+                Button(saving ? "Desant..." : "Desa l'ordre") { save() }
+                    .buttonStyle(PBtn(kind: .primary)).disabled(saving || !store.hasConcertOrder).padding(.vertical, 14)
+            }
+            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 60)
+        }
+        .pScreen("Ordre del programa")
+        .modifier(PToastOverlay())
+        .onAppear { if docs.isEmpty { docs = store.concertDocs(concertId) } }
+    }
+
+    private func move(_ a: Int, _ b: Int) {
+        guard b >= 0, b < docs.count else { return }
+        docs.swapAt(a, b)
+    }
+
+    private func save() {
+        saving = true
+        Task {
+            do {
+                try await store.setConcertOrder(concertId, docs)
+                toast("Ordre desat")
+                dismiss()
+            } catch { toast("Error: " + error.localizedDescription) }
+            saving = false
         }
     }
 }

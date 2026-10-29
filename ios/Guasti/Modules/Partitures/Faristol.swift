@@ -28,8 +28,11 @@ struct FaristolView: View {
     @State private var confirmClear = false
     @State private var redraw = 0
 
-    init(docs: [Fila], title: String, startDrawing: Bool = false) {
-        self.docs = docs.filter(Arxiu.isPdf)
+    init(docs: [Fila], title: String, startDrawing: Bool = false, start: Int = 0) {
+        let pdfs = docs.filter(Arxiu.isPdf)
+        self.docs = pdfs
+        let first = start < docs.count ? docs[start]["ID"] : nil
+        _i = State(initialValue: pdfs.firstIndex { $0["ID"] == first } ?? 0)
         self.title = title
         self.startDrawing = startDrawing
     }

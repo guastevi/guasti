@@ -89,7 +89,21 @@ final class PartituresStore: ObservableObject {
         var seen = Set<String>(), out: [Fila] = []
         let all = docsFor("Concert", cid) + rows("Obres").filter { $0["Concert"] == cid }.flatMap { docsFor("Obra", $0["ID"] ?? "") }
         for d in all where seen.insert(d["ID"] ?? "").inserted { out.append(d) }
-        return out
+        // L'ordre del programa (columna «Ordre» del full Concerts): primer els ordenats, després la resta
+        let ordre = Arxiu.splitTags(find("Concerts", cid)?["Ordre"])
+        guard !ordre.isEmpty else { return out }
+        let pos = Dictionary(ordre.enumerated().map { ($1, $0) }, uniquingKeysWith: { a, _ in a })
+        return out.enumerated().sorted { a, b in
+            let pa = pos[a.element["ID"] ?? ""] ?? Int.max, pb = pos[b.element["ID"] ?? ""] ?? Int.max
+            return pa != pb ? pa < pb : a.offset < b.offset
+        }.map(\.element)
+    }
+
+    /// El full Concerts té la columna «Ordre» per guardar l'ordre del programa?
+    var hasConcertOrder: Bool { dades?.Concerts.headers.contains("Ordre") ?? false }
+
+    func setConcertOrder(_ cid: String, _ docs: [Fila]) async throws {
+        try await save("Concerts", ["ID": cid, "Ordre": docs.compactMap { $0["ID"] }.joined(separator: ", ")], original: cid)
     }
 
     func firstDoc(_ field: String, _ id: String) -> Fila? {

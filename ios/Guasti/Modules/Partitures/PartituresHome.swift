@@ -168,8 +168,9 @@ struct PConcertRow: View {
                 } else {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 6) {
-                            ForEach(ds, id: \.self) { d in
-                                NavigationLink { PDetailView(name: "Documents", id: d["ID"] ?? "") } label: {
+                            ForEach(Array(ds.enumerated()), id: \.offset) { k, d in
+                                // Obre el faristol amb tot el programa, començant per aquesta partitura
+                                Button { req = .stand(ds, store.concertLabel(c), start: k) } label: {
                                     PCover(doc: d, label: " ", showFormat: false, placeholderSize: 6).frame(width: 44)
                                 }
                                 .buttonStyle(.plain)

@@ -19,7 +19,7 @@ enum PReq: Identifiable {
     case upload(Fila)
     case tools
     case package([Fila], String, score: Bool = false, offline: Bool = false)
-    case stand([Fila], String, draw: Bool = false)
+    case stand([Fila], String, draw: Bool = false, start: Int = 0)
     case review
 
     var id: String {
@@ -28,7 +28,7 @@ enum PReq: Identifiable {
         case .upload: return "upload"
         case .tools: return "tools"
         case .package(_, let t, _, let o): return "pkg-\(t)-\(o)"
-        case .stand(_, let t, let d): return "stand-\(t)-\(d)"
+        case .stand(_, let t, let d, let s): return "stand-\(t)-\(d)-\(s)"
         case .review: return "review"
         }
     }
@@ -56,8 +56,8 @@ struct PPresenter: ViewModifier {
                 .modifier(PToastOverlay())
             }
             .fullScreenCover(item: Binding(get: { isStand(req) ? req : nil }, set: { if $0 == nil { req = nil } })) { r in
-                if case .stand(let docs, let title, let draw) = r {
-                    FaristolView(docs: docs, title: title, startDrawing: draw)
+                if case .stand(let docs, let title, let draw, let start) = r {
+                    FaristolView(docs: docs, title: title, startDrawing: draw, start: start)
                 }
             }
     }
