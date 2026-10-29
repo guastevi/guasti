@@ -503,6 +503,7 @@ struct PUploadView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var tipus: String
     @State private var obra = ""
+    @State private var tema: String
     @State private var files: [PickedFile] = []
     @State private var picking = false
     @State private var busy = false
@@ -511,6 +512,7 @@ struct PUploadView: View {
     init(meta: Fila) {
         self.meta = meta
         _tipus = State(initialValue: meta["Tipus"] ?? "Particel·la")
+        _tema = State(initialValue: meta["Formació"] ?? "")
     }
 
     var body: some View {
@@ -518,7 +520,10 @@ struct PUploadView: View {
             VStack(alignment: .leading, spacing: 0) {
                 fieldLabel("Tipus")
                 PChipsField(options: store.llista("Tipus document"), value: $tipus, multi: true)
-                if meta["Obra"] == nil && meta["Concert"] == nil {
+                if meta["Categoria"] == "Llibres" {
+                    fieldLabel("Tema")
+                    PChipsField(options: store.llista("Formació: Llibres"), value: $tema, multi: false)
+                } else if meta["Obra"] == nil && meta["Concert"] == nil {
                     fieldLabel("Obra")
                     PRefPicker(sheet: "Obres", value: $obra)
                 }
@@ -546,6 +551,8 @@ struct PUploadView: View {
         var m = meta
         if !tipus.isEmpty { m["Tipus"] = tipus }
         if !obra.isEmpty { m["Obra"] = obra }
+        if meta["Categoria"] == "Llibres" { m["Formació"] = tema }
+        if m["Formació"] == "" { m["Formació"] = nil }
         busy = true
         Task {
             do {

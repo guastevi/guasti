@@ -224,6 +224,7 @@ struct PTabContent: View {
         switch tab {
         case "Compositors": return .form("Obres", [:])
         case "Documents", "Inici": return .tools
+        case "Llibres": return .upload(["Categoria": "Llibres", "Tipus": "Llibre de música", "Formació": s.f["Formació"] ?? ""])
         case "Cursos":
             var pre: Fila = ["Àmbit": "Pedagògic", "Categoria": "Repertori fagotístic"]
             if !s.centre.isEmpty { pre["Centre"] = s.centre }
@@ -244,6 +245,7 @@ struct PTabContent: View {
             case "Obres": obres
             case "Cursos": cursos
             case "Documents": documents
+            case "Llibres": llibres
             case "Compositors": compositors
             case "Concerts": concerts
             case "Fagotades": fagotades
@@ -488,6 +490,33 @@ struct PTabContent: View {
             }
             more(ents.count > shown.count)
             if items.isEmpty { PEmpty(text: "No hi ha res per mostrar.") }
+        }
+    }
+
+    // MARK: Llibres (categoria «Llibres»: canyes, didàctica, relaxació...)
+
+    private var llibres: some View {
+        let forms = store.llista("Formació: Llibres")
+        let cur = s.f["Formació"] ?? ""
+        let q = Arxiu.norm(s.q)
+        let items = store.rows("Documents").filter { d in
+            d["Categoria"] == "Llibres" && (cur.isEmpty || d["Formació"] == cur) &&
+                (q.isEmpty || !q.split(separator: " ").contains { !Arxiu.norm(d.values.joined(separator: " ")).contains($0) })
+        }.sorted { Arxiu.sortNorm($0["Títol"], $1["Títol"]) }
+        return VStack(alignment: .leading, spacing: 0) {
+            PCatBar(items: [("Tots", "")] + forms.map { ($0, $0) }, selected: cur) { s.f["Formació"] = $0 }
+            search("Cerca llibre, autor...")
+            PCount("\(items.count) llibres")
+            if items.isEmpty {
+                PEmpty(text: "Encara no hi ha llibres. Prem + per pujar-ne un (PDF, EPUB...).")
+            }
+            LazyVGrid(columns: pGridColumns, spacing: 12) {
+                ForEach(items, id: \.self) { d in
+                    NavigationLink { PDetailView(name: "Documents", id: d["ID"] ?? "") } label: {
+                        PGridItem(doc: d, title: d["Títol"] ?? "", sub: (d["Compositor"] ?? "").isEmpty ? (d["Formació"] ?? "") : (d["Compositor"] ?? ""))
+                    }.buttonStyle(.plain)
+                }
+            }
         }
     }
 

@@ -172,7 +172,8 @@ enum Arxiu {
 
     /// Les pestanyes de dalt: (full o vista, nom que es veu).
     static let tabs: [(String, String)] = [("Inici", "Inici"), ("Obres", "Obres"), ("Compositors", "Compositors"),
-                                           ("Cursos", "Pedagògic"), ("Documents", "Documents"), ("Concerts", "Concerts"),
+                                           ("Cursos", "Pedagògic"), ("Llibres", "Llibres"),
+                                           ("Documents", "Documents"), ("Concerts", "Concerts"),
                                            ("Fagotades", "Fagotades"), ("Agrupacions", "Agrupacions"), ("Directors", "Directors")]
 
     enum Tipus { case text, number, date, time, url, area, check, chips, multi, ref, comp, book, files }
