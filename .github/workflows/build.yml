@@ -22,6 +22,8 @@ jobs:
         working-directory: ios
         run: |
           sed -i '' "s/CURRENT_PROJECT_VERSION: \"1\"/CURRENT_PROJECT_VERSION: \"${{ github.run_number }}\"/" project.yml
+          sed -i '' "s/MARKETING_VERSION: \"1.0\"/MARKETING_VERSION: \"1.0.${{ github.run_number }}\"/" project.yml
+          grep -E "MARKETING_VERSION|CURRENT_PROJECT_VERSION" project.yml
           xcodegen generate
 
       - name: Compila (sense signar; SideStore la signa al mòbil)
