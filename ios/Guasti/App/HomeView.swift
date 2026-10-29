@@ -8,6 +8,24 @@ struct HomeView: View {
 
     var body: some View {
         NavigationStack {
+            // A l'iPad només hi ha Partitures: s'obre directament
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                PartituresView()
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button { showSettings = true } label: { Image(systemName: "gearshape") }
+                                .accessibilityLabel("Configuració")
+                        }
+                    }
+                    .sheet(isPresented: $showSettings) { NavigationStack { SetupView() } }
+                    .onAppear { if !connection.isConfigured { showSettings = true } }
+            } else {
+                modules
+            }
+        }
+    }
+
+    private var modules: some View {
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 14) {
                     ForEach(ModuleRegistry.all, id: \.id) { module in
@@ -43,7 +61,6 @@ struct HomeView: View {
             .onAppear {
                 if !connection.isConfigured { showSettings = true }
             }
-        }
     }
 }
 

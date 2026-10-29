@@ -17,7 +17,7 @@ enum ModuleRegistry {
     static let all: [any GuastiModule] = [
         ArmariModule(),
         GastosModule(),
-        ComingSoonModule(id: "partitures", title: "Partitures", systemImage: "music.note.list", tint: Theme.blue),
+        PartituresModule(),
     ]
 }
 
