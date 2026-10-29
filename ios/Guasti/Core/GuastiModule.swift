@@ -16,7 +16,7 @@ protocol GuastiModule {
 enum ModuleRegistry {
     static let all: [any GuastiModule] = [
         ArmariModule(),
-        ComingSoonModule(id: "gastos", title: "Gastos", systemImage: "eurosign.circle.fill", tint: Color(white: 0.07)),
+        GastosModule(),
         ComingSoonModule(id: "partitures", title: "Partitures", systemImage: "music.note.list", tint: Theme.blue),
     ]
 }

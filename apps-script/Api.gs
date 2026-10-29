@@ -23,6 +23,11 @@ const ARMARI = {
   photoPrefix: 'fotos_Images/',
 };
 
+// El full "Economia Guasti" de l'app web de Gastos (Finances).
+const GASTOS = {
+  sheetId: '1mREzAqTLYNk7e6Znj6SAwJiIRxpcmq2QdbAi03VfqLQ',
+};
+
 const THUMB_SIZES = { thumb: 400, medium: 1100 };
 
 // ---------------------------------------------------------------- entrada
@@ -52,6 +57,9 @@ function handle_(p) {
     'armari.addPhoto': () => withLock_(() => armariAddPhoto_(p.pieceId, p.base64)),
     'armari.deletePhoto': () => withLock_(() => armariDeletePhoto_(p.photoId)),
     'armari.setCover': () => withLock_(() => armariSetCover_(p.pieceId, p.path)),
+    'gastos.dades': () => gastosDades_(p.mes),
+    'gastos.afegir': () => withLock_(() => gastosAfegir_(p.moviment, p.mes)),
+    'gastos.esborrar': () => withLock_(() => gastosEsborrar_(p.id, p.mes)),
     'armari.reorder': () => withLock_(() => armariReorder_(p.pieceId, p.ids)),
   };
 
@@ -189,6 +197,226 @@ function coverOf_(pieceId) {
   const row = t.rows.find(r => String(r[t.col.ID]) === String(pieceId));
   return row ? String(row[t.col.Portada] || '') : '';
 }
+
+// ---------------------------------------------------------------- gastos
+// La mateixa lògica que el Codi.gs de l'app web de Gastos, sobre el mateix full.
+
+const G_MOV = 'Moviments';
+const G_CAT = 'Categories';
+const G_TIPUS = ['Despesa', 'Ingrés', 'Estalvi', 'Inversió'];
+const G_TZ = 'Europe/Madrid';
+
+function gastosSS_() {
+  return SpreadsheetApp.openById(GASTOS.sheetId);
+}
+
+function gastosDades_(mes) {
+  const ss = gastosSS_();
+  const movs = gLlegirMoviments_(ss);
+  const actual = Utilities.formatDate(new Date(), G_TZ, 'yyyy-MM');
+  mes = mes || actual;
+  const mesos = Array.from(new Set(movs.map(m => m.mes).concat([actual, mes]))).sort().reverse();
+  return {
+    mes: mes,
+    mesActual: actual,
+    avui: Utilities.formatDate(new Date(), G_TZ, 'yyyy-MM-dd'),
+    mesos: mesos,
+    categories: gCategories_(ss, movs),
+    conceptes: gConceptes_(movs),
+    resum: gResumMes_(movs, mes),
+    evolucio: gEvolucio_(movs, mes, 6),
+    moviments: movs.filter(m => m.mes === mes)
+      .sort((a, b) => b.data.localeCompare(a.data) || b.fila - a.fila),
+  };
+}
+
+function gastosAfegir_(d, mes) {
+  d = d || {};
+  const tipus = gTipusCanonic_(d.tipus || 'Despesa');
+  const imp = gNum_(d.import);
+  const cat = String(d.categoria || '').trim();
+  const concepte = String(d.concepte || '').trim();
+  if (!tipus) throw new Error('Tipus no vàlid');
+  if (!(imp > 0)) throw new Error("L'import ha de ser més gran que 0");
+  if (!cat) throw new Error('Falta la categoria');
+  const data = gDataDe_(d.data);
+  const ss = gastosSS_();
+  const nom = gRegistraCategoria_(ss, cat, tipus);
+  const sh = ss.getSheetByName(G_MOV);
+  const fila = sh.getLastRow() + 1;
+  sh.getRange(fila, 2).setNumberFormat('@');
+  sh.getRange(fila, 1, 1, 7).setValues([[data, Utilities.formatDate(data, G_TZ, 'yyyy-MM'), tipus, nom, concepte, imp,
+    Utilities.getUuid().slice(0, 8)]]);
+  const out = gastosDades_(mes);
+  out.missatge = 'Desat: ' + imp.toFixed(2).replace('.', ',') + ' € a ' + nom;
+  return out;
+}
+
+function gastosEsborrar_(id, mes) {
+  const sh = gastosSS_().getSheetByName(G_MOV);
+  const m = /^FILA-(\d+)$/.exec(String(id));
+  let fet = false;
+  if (m) {
+    sh.deleteRow(Number(m[1]));
+    fet = true;
+  } else {
+    const n = sh.getLastRow() - 1;
+    const ids = n > 0 ? sh.getRange(2, 7, n, 1).getValues() : [];
+    for (let i = 0; i < ids.length; i++) {
+      if (String(ids[i][0]) === String(id)) { sh.deleteRow(i + 2); fet = true; break; }
+    }
+  }
+  if (!fet) throw new Error("No s'ha trobat el moviment");
+  return gastosDades_(mes);
+}
+
+function gRegistraCategoria_(ss, nom, tipus) {
+  const sh = ss.getSheetByName(G_CAT);
+  const n = sh.getLastRow() - 1;
+  const files = n > 0 ? sh.getRange(2, 1, n, 2).getValues() : [];
+  const trobada = files.find(r =>
+    String(r[0]).trim().toLowerCase() === nom.toLowerCase() && gTipusCanonic_(r[1]) === tipus);
+  if (trobada) return String(trobada[0]).trim();
+  const net = nom.charAt(0).toUpperCase() + nom.slice(1);
+  sh.getRange(sh.getLastRow() + 1, 1, 1, 2).setValues([[net, tipus]]);
+  return net;
+}
+
+function gLlegirMoviments_(ss) {
+  const sh = ss.getSheetByName(G_MOV);
+  if (!sh) return [];
+  const n = sh.getLastRow() - 1;
+  if (n < 1) return [];
+  const out = [];
+  sh.getRange(2, 1, n, 7).getValues().forEach((r, i) => {
+    const imp = gNum_(r[5]);
+    const tipus = gTipusCanonic_(r[2]);
+    if (!tipus || !imp) return;
+    const dataTxt = r[0] instanceof Date ? Utilities.formatDate(r[0], G_TZ, 'yyyy-MM-dd') : '';
+    const mes = dataTxt ? dataTxt.slice(0, 7) : String(r[1]);
+    if (!/^\d{4}-\d{2}$/.test(mes)) return;
+    out.push({
+      fila: i + 2,
+      data: dataTxt || mes + '-01',
+      mes: mes,
+      tipus: tipus,
+      categoria: String(r[3]).trim() || 'Sense categoria',
+      concepte: String(r[4]).trim(),
+      import: gArrod_(imp),
+      id: String(r[6] || ('FILA-' + (i + 2))),
+    });
+  });
+  return out;
+}
+
+function gResumMes_(movs, mes) {
+  const r = { mes: mes, ingressos: 0, despeses: 0, estalvi: 0, inversio: 0 };
+  const cats = {}, conc = {}, fonts = {};
+  movs.filter(m => m.mes === mes).forEach(m => {
+    if (m.tipus === 'Ingrés') {
+      r.ingressos += m.import;
+      fonts[m.categoria] = (fonts[m.categoria] || 0) + m.import;
+    } else if (m.tipus === 'Despesa') {
+      r.despeses += m.import;
+      cats[m.categoria] = (cats[m.categoria] || 0) + m.import;
+      const c = m.concepte || m.categoria;
+      conc[c] = (conc[c] || 0) + m.import;
+    } else if (m.tipus === 'Estalvi') {
+      r.estalvi += m.import;
+    } else if (m.tipus === 'Inversió') {
+      r.inversio += m.import;
+    }
+  });
+  ['ingressos', 'despeses', 'estalvi', 'inversio'].forEach(k => r[k] = gArrod_(r[k]));
+  r.disponible = gArrod_(r.ingressos - r.despeses - r.estalvi - r.inversio);
+  r.categories = gOrdena_(cats, r.despeses);
+  r.conceptes = gOrdena_(conc, r.despeses).slice(0, 8);
+  r.fonts = gOrdena_(fonts, r.ingressos);
+  return r;
+}
+
+function gEvolucio_(movs, mesFinal, n) {
+  let [y, m] = mesFinal.split('-').map(Number);
+  const mesos = [];
+  for (let i = 0; i < n; i++) {
+    mesos.unshift(y + '-' + String(m).padStart(2, '0'));
+    m--;
+    if (m === 0) { m = 12; y--; }
+  }
+  return mesos.map(mes => {
+    const r = gResumMes_(movs, mes);
+    return { mes: mes, ingressos: r.ingressos, despeses: r.despeses, estalvi: gArrod_(r.estalvi + r.inversio) };
+  });
+}
+
+function gCategories_(ss, movs) {
+  const sh = ss.getSheetByName(G_CAT);
+  const compte = {};
+  G_TIPUS.forEach(t => compte[t] = {});
+  const n = sh ? sh.getLastRow() - 1 : 0;
+  if (n > 0) {
+    sh.getRange(2, 1, n, 2).getValues().forEach(r => {
+      const t = gTipusCanonic_(r[1]);
+      const nom = String(r[0]).trim();
+      if (t && nom && !(nom in compte[t])) compte[t][nom] = 0;
+    });
+  }
+  movs.forEach(m => {
+    if (compte[m.tipus]) compte[m.tipus][m.categoria] = (compte[m.tipus][m.categoria] || 0) + 1;
+  });
+  const out = {};
+  G_TIPUS.forEach(t => {
+    out[t] = Object.keys(compte[t]).sort((a, b) => compte[t][b] - compte[t][a] || a.localeCompare(b, 'ca'));
+  });
+  return out;
+}
+
+function gConceptes_(movs) {
+  const c = {};
+  movs.forEach(m => {
+    if (!m.concepte) return;
+    c[m.categoria] = c[m.categoria] || {};
+    c[m.categoria][m.concepte] = (c[m.categoria][m.concepte] || 0) + 1;
+  });
+  const out = {};
+  Object.keys(c).forEach(cat => {
+    out[cat] = Object.keys(c[cat]).sort((a, b) => c[cat][b] - c[cat][a]).slice(0, 8);
+  });
+  return out;
+}
+
+function gTipusCanonic_(t) {
+  const s = String(t || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (s.indexOf('despes') === 0) return 'Despesa';
+  if (s.indexOf('ingres') === 0) return 'Ingrés';
+  if (s.indexOf('estalvi') === 0) return 'Estalvi';
+  if (s.indexOf('inversi') === 0) return 'Inversió';
+  return '';
+}
+
+function gNum_(x) {
+  if (typeof x === 'number') return x;
+  let s = String(x || '').replace(/[\s€]/g, '');
+  if (s.indexOf(',') > -1 && s.indexOf('.') > -1) s = s.replace(/\./g, '').replace(',', '.');
+  else s = s.replace(',', '.');
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+
+function gDataDe_(s) {
+  const txt = /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''))
+    ? String(s) : Utilities.formatDate(new Date(), G_TZ, 'yyyy-MM-dd');
+  const [y, m, d] = txt.split('-').map(Number);
+  return new Date(y, m - 1, d, 12);
+}
+
+function gOrdena_(obj, total) {
+  return Object.keys(obj)
+    .map(k => ({ nom: k, total: gArrod_(obj[k]), pct: total ? Math.round(obj[k] / total * 1000) / 10 : 0 }))
+    .sort((a, b) => b.total - a.total);
+}
+
+function gArrod_(n) { return Math.round(n * 100) / 100; }
 
 // ---------------------------------------------------------------- fotos
 
