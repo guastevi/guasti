@@ -49,10 +49,19 @@ struct PecaDetailView: View {
             }
 
             Section {
-                row("Tipus", peca.tipus)
+                row("Tipus", peca.tipus.isEmpty ? "" : ArmariCatalog.tipusLabel(peca.tipus))
                 row("Temporada", peca.temporada)
                 row("Ubicació", peca.ubicacio)
-                row("Color", peca.color)
+                if !peca.colors.isEmpty {
+                    LabeledContent("Color") {
+                        HStack(spacing: 6) {
+                            ForEach(peca.colors, id: \.self) { c in
+                                ColorSwatch(name: c, size: 18)
+                                Text(c)
+                            }
+                        }
+                    }
+                }
                 row("Talla", peca.talla)
                 row("Marca", peca.marca)
                 if peca.isPrivate {

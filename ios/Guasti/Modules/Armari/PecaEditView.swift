@@ -11,21 +11,94 @@ struct PecaEditView: View {
     @State private var saving = false
     @State private var errorText: String?
     @State private var confirmDelete = false
+    @State private var addingLocation = false
+    @State private var newLocation = ""
+
+    private var nomOptions: [String] {
+        var seen = Set<String>()
+        return (ArmariCatalog.ordre + store.values(\.nom)).filter { seen.insert($0).inserted }
+    }
+
+    private var ubicacions: [String] {
+        var seen = Set<String>()
+        return (ArmariCatalog.ubicacions + store.values(\.ubicacio) + [peca.ubicacio])
+            .filter { !$0.isEmpty && seen.insert($0).inserted }
+    }
+
+    private func toggleColor(_ name: String) {
+        var list = peca.colors
+        if let i = list.firstIndex(of: name) { list.remove(at: i) } else { list.append(name) }
+        peca.color = list.joined(separator: ", ")
+    }
 
     var body: some View {
         Form {
             Section {
-                TextField("Nom de la peça", text: $peca.nom)
-                    .font(.headline)
+                SuggestField(title: "Peça", text: $peca.nom, options: nomOptions)
             }
 
             Section {
-                SuggestField(title: "Tipus", text: $peca.tipus, options: store.values(\.tipus))
-                SuggestField(title: "Temporada", text: $peca.temporada, options: store.values(\.temporada))
-                SuggestField(title: "Ubicació", text: $peca.ubicacio, options: store.values(\.ubicacio))
-                SuggestField(title: "Color", text: $peca.color, options: store.values(\.color), appends: true)
+                Picker("Tipus", selection: $peca.tipus) {
+                    ForEach(ArmariCatalog.tipus, id: \.self) { Text(ArmariCatalog.tipusLabel($0)).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                Picker("Temporada", selection: $peca.temporada) {
+                    ForEach(ArmariCatalog.temporades, id: \.self) { Text($0).tag($0) }
+                }
+                .pickerStyle(.segmented)
+            } header: {
+                Text("Tipus i temporada")
+            }
+
+            Section {
                 SuggestField(title: "Talla", text: $peca.talla, options: store.values(\.talla))
                 SuggestField(title: "Marca", text: $peca.marca, options: store.values(\.marca))
+                Picker("Ubicació", selection: $peca.ubicacio) {
+                    Text("—").tag("")
+                    ForEach(ubicacions, id: \.self) { Text($0).tag($0) }
+                }
+                if addingLocation {
+                    HStack {
+                        TextField("Nom del lloc nou", text: $newLocation)
+                        Button("Afegeix") {
+                            let v = newLocation.trimmingCharacters(in: .whitespaces)
+                            if !v.isEmpty { peca.ubicacio = v }
+                            newLocation = ""
+                            addingLocation = false
+                        }
+                    }
+                } else {
+                    Button("+ Un altre lloc") { addingLocation = true }
+                }
+            }
+
+            Section {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 38), spacing: 10)], spacing: 10) {
+                    ForEach(ArmariCatalog.colors, id: \.name) { c in
+                        let on = peca.colors.contains(c.name)
+                        Button {
+                            toggleColor(c.name)
+                        } label: {
+                            ColorSwatch(name: c.name, size: 34)
+                                .overlay {
+                                    if on {
+                                        Image(systemName: "checkmark")
+                                            .font(.caption.weight(.bold))
+                                            .foregroundStyle(.white)
+                                            .shadow(radius: 2)
+                                    }
+                                }
+                                .padding(2)
+                                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(on ? Color.accentColor : .clear, lineWidth: 2))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(c.name)
+                        .accessibilityAddTraits(on ? .isSelected : [])
+                    }
+                }
+                .padding(.vertical, 4)
+            } header: {
+                Text(peca.color.isEmpty ? "Color · toca'n un o més" : "Color · \(peca.color)")
             }
 
             Section("Notes") {

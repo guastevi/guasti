@@ -61,7 +61,8 @@ struct Peca: Codable, Identifiable, Hashable {
     }
 
     static func nova() -> Peca {
-        Peca(id: String(UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased().prefix(8)))
+        Peca(id: String(UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased().prefix(8)),
+             tipus: "Roba de carrer", temporada: "Tot l'any")
     }
 
     var isPrivate: Bool {
@@ -119,4 +120,67 @@ struct Foto: Codable, Identifiable, Hashable {
 
 struct PecaRoute: Hashable {
     let id: String
+}
+
+/// Les mateixes llistes que fa servir l'app web de l'Armari.
+enum ArmariCatalog {
+    static let tipus = ["Roba de concert", "Roba de carrer", "Roba de casa"]
+    static func tipusLabel(_ t: String) -> String {
+        switch t {
+        case "Roba de concert": return "Concert"
+        case "Roba de casa": return "Casa"
+        default: return "Carrer"
+        }
+    }
+
+    static let temporades = ["Hivern", "Estiu", "Tot l'any"]
+
+    static let ubicacions = ["Armari petit", "Armari dreta", "Armari esquerra", "Perxes dreta", "Perxes esquerra",
+                             "Porta", "Còmoda 1r calaix", "Còmoda 2n calaix", "Còmoda 3r calaix"]
+
+    static let colors: [(name: String, hex: String)] = [
+        ("Negre", "111111"), ("Blau marí", "1d2b4c"), ("Granat", "6e1423"), ("Vermell", "c8102e"),
+        ("Verd", "2e7d32"), ("Blanc", "ffffff"), ("Groc", "f2c200"), ("Marró", "6b4226"), ("Gris", "8c8c8c"),
+        ("Beix", "d9c4a3"), ("Blau", "1f5fbf"), ("Blau cel", "8ec5e8"), ("Rosa", "f3a6b8"), ("Fúcsia", "d1127a"),
+        ("Lila", "9b6fc4"), ("Taronja", "ec7a1c"), ("Daurat", "c9a227"), ("Platejat", "c4c4c4"), ("Multicolor", "multi"),
+    ]
+
+    /// Ordre "com un armari" de l'app web.
+    static let ordre = ["Jersei", "Rebeca", "Dessuadora", "Armilla", "Americana", "Jaqueta", "Abric", "Camisa", "Blusa",
+                        "Samarreta", "Top", "Body", "Vestit", "Faldilla", "Texans", "Pantaló", "Malles", "Sabates",
+                        "Botins", "Botes", "Sandàlies", "Bambes", "Bossa", "Fulard", "Cinturó", "Barret", "Mitjons",
+                        "Mitges", "Bragues", "Sostenidors", "Lligacames", "Combinació", "Pijama", "Banyador", "Llençols",
+                        "Funda de coixí", "Funda nòrdica", "Edredó", "Manta", "Tovallola", "Barnús", "Estovalles"]
+
+    /// "Samarreta interior màniga llarga" → "Samarreta"
+    static func kind(of nom: String) -> String {
+        let t = nom.trimmingCharacters(in: .whitespaces)
+        let l = t.lowercased()
+        return ordre.first { l == $0.lowercased() || l.hasPrefix($0.lowercased() + " ") } ?? t
+    }
+
+    static func orderIndex(_ p: Peca) -> Int {
+        ordre.firstIndex(of: kind(of: p.nom)) ?? ordre.count
+    }
+
+    static func group(_ p: Peca) -> Int {
+        switch p.tipus {
+        case "Roba de concert": return 1
+        case "Roba de casa": return 2
+        default: return 0
+        }
+    }
+}
+
+enum ArmariSort: String, CaseIterable, Identifiable {
+    case armari, nom, noves, ubicacio
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .armari: return "Com un armari"
+        case .nom: return "Per nom (A-Z)"
+        case .noves: return "Últimes afegides"
+        case .ubicacio: return "Per ubicació"
+        }
+    }
 }

@@ -11,26 +11,61 @@ struct ArmariView: View {
     @State private var color: String?
     @State private var showPrivate = false
     @State private var creating = false
+    @AppStorage("armari.sort") private var sort: ArmariSort = .armari
 
     private let columns = [GridItem(.adaptive(minimum: 105), spacing: 10)]
 
     private var filtered: [Peca] {
-        store.peces.filter { p in
+        let list = store.peces.filter { p in
             (showPrivate || !p.isPrivate)
-                && (tipus == nil || p.tipus == tipus)
+                && (tipus == nil || ArmariCatalog.group(p) == ArmariCatalog.group(Peca(id: "", tipus: tipus!)))
                 && (temporada == nil || p.temporada == temporada || p.temporada == "Tot l'any")
                 && (ubicacio == nil || p.ubicacio == ubicacio)
                 && (color == nil || p.colors.contains(color!))
                 && (search.isEmpty || p.searchText.localizedStandardContains(search))
         }
+        return sorted(list)
+    }
+
+    private func sorted(_ list: [Peca]) -> [Peca] {
+        let pos = Dictionary(store.peces.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { a, _ in a })
+        let byNom: (Peca, Peca) -> Bool = { $0.nom.localizedCompare($1.nom) == .orderedAscending }
+        switch sort {
+        case .noves:
+            return list.sorted { (pos[$0.id] ?? 0) > (pos[$1.id] ?? 0) }
+        case .nom:
+            return list.sorted { a, b in
+                ArmariCatalog.group(a) != ArmariCatalog.group(b) ? ArmariCatalog.group(a) < ArmariCatalog.group(b) : byNom(a, b)
+            }
+        case .ubicacio:
+            let idx: (Peca) -> Int = { ArmariCatalog.ubicacions.firstIndex(of: $0.ubicacio) ?? ArmariCatalog.ubicacions.count }
+            return list.sorted { a, b in
+                if idx(a) != idx(b) { return idx(a) < idx(b) }
+                if a.ubicacio != b.ubicacio { return a.ubicacio.localizedCompare(b.ubicacio) == .orderedAscending }
+                return byNom(a, b)
+            }
+        case .armari:
+            return list.sorted { a, b in
+                if ArmariCatalog.group(a) != ArmariCatalog.group(b) { return ArmariCatalog.group(a) < ArmariCatalog.group(b) }
+                let ia = ArmariCatalog.orderIndex(a), ib = ArmariCatalog.orderIndex(b)
+                return ia != ib ? ia < ib : byNom(a, b)
+            }
+        }
     }
 
     private var hasFilters: Bool {
-        tipus != nil || temporada != nil || ubicacio != nil || color != nil
+        temporada != nil || ubicacio != nil || color != nil
     }
 
     var body: some View {
         ScrollView {
+            Picker("Tipus", selection: $tipus) {
+                Text("Tot").tag(String?.none)
+                ForEach(ArmariCatalog.tipus, id: \.self) { Text(ArmariCatalog.tipusLabel($0)).tag(Optional($0)) }
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal)
+            .padding(.bottom, 8)
             if hasFilters {
                 activeFilters
             }
@@ -122,7 +157,10 @@ struct ArmariView: View {
 
     private var filterMenu: some View {
         Menu {
-            filterPicker("Tipus", values: store.values(\.tipus), selection: $tipus)
+            Picker("Ordre", selection: $sort) {
+                ForEach(ArmariSort.allCases) { Text($0.title).tag($0) }
+            }
+            .pickerStyle(.menu)
             filterPicker("Temporada", values: store.values(\.temporada), selection: $temporada)
             filterPicker("Ubicació", values: store.values(\.ubicacio), selection: $ubicacio)
             filterPicker("Color", values: store.values(\.color), selection: $color)
@@ -158,7 +196,6 @@ struct ArmariView: View {
     private var activeFilters: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack {
-                chip(tipus) { tipus = nil }
                 chip(temporada) { temporada = nil }
                 chip(ubicacio) { ubicacio = nil }
                 chip(color) { color = nil }
@@ -187,7 +224,6 @@ struct ArmariView: View {
     }
 
     private func clearFilters() {
-        tipus = nil
         temporada = nil
         ubicacio = nil
         color = nil
