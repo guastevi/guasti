@@ -30,8 +30,12 @@ struct AppsScriptClient {
         let data: Data
         do {
             data = try await URLSession.shared.data(for: request).0
+        } catch let error as URLError where error.code == .timedOut {
+            throw APIError(message: "Google ha tardat massa a respondre. Torna-ho a provar.")
+        } catch let error as URLError where error.code == .cancelled {
+            throw CancellationError()
         } catch {
-            throw APIError(message: "No hi ha connexió amb Google. Les dades guardades al mòbil es continuen veient.")
+            throw APIError(message: "No hi ha connexió amb Google (\(error.localizedDescription)). Les dades guardades al mòbil es continuen veient.")
         }
 
         let decoder = JSONDecoder()
@@ -41,7 +45,11 @@ struct AppsScriptClient {
         guard envelope.ok else {
             throw APIError(message: envelope.error ?? "Error desconegut")
         }
-        return try decoder.decode(T.self, from: data)
+        do {
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            throw APIError(message: "No entenc la resposta de Google (\(action)): \(error)")
+        }
     }
 }
 

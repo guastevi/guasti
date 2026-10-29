@@ -98,6 +98,8 @@ final class ArmariStore: ObservableObject {
             lastSync = Date()
             errorMessage = nil
             saveSnapshot()
+        } catch is CancellationError {
+            // La pantalla s'ha tancat: no és un error.
         } catch {
             errorMessage = error.localizedDescription
         }

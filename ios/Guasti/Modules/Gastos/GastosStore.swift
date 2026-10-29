@@ -35,6 +35,8 @@ final class GastosStore: ObservableObject {
             if let mes { params["mes"] = mes }
             let result: GastosDades = try await client.call("gastos.dades", params)
             set(result)
+        } catch is CancellationError {
+            // La pantalla s'ha tancat: no és un error.
         } catch {
             errorMessage = error.localizedDescription
         }
