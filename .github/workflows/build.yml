@@ -3,6 +3,7 @@ name: Compila Guasti
 on:
   push:
     branches: [main]
+    paths: ['ios/**', '.github/workflows/**']
   workflow_dispatch:
 
 permissions:

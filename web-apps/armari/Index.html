@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
+<style>
+/* Minimal wardrobe catalogue: home with two choices, photo gallery, detail sheet, add/edit form */
+:root{
+  --bg:#ffffff; --surface:#f4f4f4; --sunk:#e8e8e8; --ink:#111111; --muted:#6a6a6a; --line:#dedede;
+  --accent:#6e1423; --accent-ink:#ffffff; --soft:#efefef; --tint:#6e1423; --danger:#a01c1c;
+  --display:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif;
+  --body:"Figtree",-apple-system,system-ui,"Segoe UI",sans-serif;
+  --r:18px;
+  --chev:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%236b6e73' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0a0a0a; --surface:#171717; --sunk:#212121; --ink:#f5f5f5; --muted:#9a9a9a; --line:#2a2a2a;
+  --accent:#8a1a2b; --accent-ink:#ffffff; --soft:#1d1d1d; --tint:#c42a3a; --danger:#e0574f; color-scheme:dark}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 var(--body)}
+body{padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+button{font:inherit;color:inherit}
+.screen{max-width:760px;margin:0 auto;padding-inline:18px;padding-block:14px 110px}
+.screen[hidden]{display:none}
+.bar{display:flex;align-items:center;gap:10px;min-height:48px;position:sticky;top:0;z-index:5;background:var(--bg);padding-block:6px}
+.bar h2{flex:1;margin:0;font:700 22px/1.1 var(--display);letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.icon{width:40px;height:40px;border-radius:50%;border:0;background:var(--soft);display:grid;place-items:center;cursor:pointer;flex:0 0 auto}
+.icon svg{width:18px;height:18px}
+/* home */
+.home{min-height:calc(100vh - 40px);display:flex;flex-direction:column;justify-content:center;gap:28px;padding-block:40px}
+.home h1{font:700 clamp(40px,11vw,64px)/.95 var(--display);letter-spacing:-.035em;margin:0}
+.home .sub{color:var(--muted);margin-top:10px;font-variant-numeric:tabular-nums}
+.choices{display:grid;gap:14px}
+.choice{display:flex;align-items:center;gap:16px;text-align:left;border:0;border-radius:var(--r);padding:22px 20px;cursor:pointer;background:var(--surface);box-shadow:0 1px 0 var(--line)}
+.choice.primary{background:var(--accent);color:var(--accent-ink);box-shadow:none}
+.choice .ic{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:rgba(127,127,127,.14);flex:0 0 auto}
+.choice .ic svg{width:24px;height:24px}
+.choice b{display:block;font:600 19px var(--body)}
+.choice b + span{display:block;font-size:14px;opacity:.75}
+.peek{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.peek div{aspect-ratio:3/4;border-radius:10px;background:var(--sunk) center/cover no-repeat}
+/* filters */
+.search{width:100%;border:0;background:var(--surface);border-radius:14px;padding:12px 14px 12px 40px;font:inherit;color:var(--ink);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b6e73' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.5-3.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:14px center}
+.seg{display:flex;background:var(--soft);border-radius:999px;padding:4px;gap:2px}
+.seg button{flex:1;border:0;background:none;border-radius:999px;padding:8px 6px;font-size:14px;font-weight:500;cursor:pointer;color:var(--muted);white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.home h1 span{color:var(--tint)}
+.bar h2{color:var(--accent)}
+@media (prefers-color-scheme: dark){.bar h2{color:var(--ink)}}
+.chip{color:var(--tint)}
+.pt .first{background:var(--accent)!important;color:var(--accent-ink)!important}
+.slide .tag{background:rgba(110,20,35,.92)!important}
+.choice.primary .ic{background:rgba(255,255,255,.16)}
+.fab{background:var(--accent)!important;color:var(--accent-ink)!important}
+.addp{border-color:var(--tint)!important;color:var(--tint)!important}
+:focus-visible{outline-color:var(--tint)!important}
+.filters{display:grid;gap:10px;margin-block:6px 16px}
+.dot{display:block;width:100%;height:100%;border-radius:8px;box-shadow:inset 0 0 0 1px rgba(127,127,127,.35)}
+.sw{display:grid;grid-template-columns:repeat(auto-fill,minmax(40px,1fr));gap:8px}
+.swb{border:0;padding:3px;background:none;border-radius:11px;aspect-ratio:1;cursor:pointer;position:relative;max-width:100%}
+.swb[aria-pressed="true"]{box-shadow:0 0 0 2px var(--accent)}
+.swb[aria-pressed="true"]::after{content:"";position:absolute;inset:0;margin:auto;width:10px;height:10px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(0,0,0,.45)}
+.fcolors{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;align-items:center}
+.fcolors::-webkit-scrollbar{display:none}
+.fcolors .swb{flex:0 0 34px;width:34px}
+.clrc{flex:0 0 auto;border:0;background:var(--soft);border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer;white-space:nowrap}
+.hint{font-weight:400}
+.pills{display:flex;flex-wrap:wrap;gap:8px}
+.pill{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:9px 14px;font-size:14px;cursor:pointer}
+.pill[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.pill.add{border-style:dashed;color:var(--tint);background:none}
+.newloc{display:flex;gap:8px;margin-top:10px}
+[hidden]{display:none!important}
+.peekwrap{display:grid;gap:8px}
+.peekh{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.pk{border:0;padding:0;background:none;cursor:pointer;display:block;aspect-ratio:3/4;border-radius:10px;overflow:hidden}
+.pk span{display:block;width:100%;height:100%;background:var(--sunk) center/cover no-repeat}
+#fSort{border-color:transparent;font-size:15px}
+.card.flash .ph{box-shadow:0 0 0 3px var(--accent);transition:box-shadow .3s}
+.form>*{min-width:0}
+.pt .mv{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;padding:5px}
+.pt .mv button{width:24px;height:24px;border-radius:50%;border:0;background:rgba(0,0,0,.45);color:#fff;display:grid;place-items:center;cursor:pointer;padding:0}
+.pt .mv button svg{width:12px;height:12px}
+.pt .mv button:disabled{visibility:hidden}
+.pt .first,.pt .mkfirst{top:6px!important;bottom:auto!important;left:6px!important;right:auto!important;height:auto!important;line-height:1.3}
+.pt .mkfirst{position:absolute;border:0;background:rgba(255,255,255,.92);color:var(--ink);font-size:11px;font-weight:600;padding:3px 8px;border-radius:999px;cursor:pointer}
+.pt.dragging{opacity:.35}
+.pt img{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.pt{-webkit-user-select:none;user-select:none}
+.pt.ghost{position:fixed;z-index:50;pointer-events:none;box-shadow:0 12px 30px rgba(0,0,0,.35);transform:scale(1.06);opacity:.95}
+.pt.over{outline:2px solid var(--accent);outline-offset:2px}
+.toollink{background:none;border:0;color:var(--tint);font:600 15px var(--body);padding:10px 0;cursor:pointer;text-decoration:underline;text-underline-offset:3px;justify-self:start}
+.wnote{color:var(--muted);margin:4px 0 14px}
+.wgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px}
+.wit{display:grid;gap:4px;position:relative;cursor:pointer;min-width:0}
+.wph{aspect-ratio:3/4;border-radius:14px;overflow:hidden;background:var(--sunk);display:block}
+.wph img{width:100%;height:100%;object-fit:cover;display:block}
+.wit input{position:absolute;top:8px;right:8px;width:22px;height:22px;accent-color:var(--accent);padding:0;margin:0}
+.wname{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wst{font-size:12px;color:var(--tint)}
+.wit.ok .wst{color:var(--muted)}
+.wit.busy .wph{opacity:.5}
+#lockBtn.open{background:var(--accent);color:var(--accent-ink)}
+.ph{position:relative}
+.lockb{position:absolute;left:8px;top:8px;z-index:1;background:var(--accent);color:var(--accent-ink);font-size:11px;font-weight:600;padding:3px 8px;border-radius:999px}
+.priv{display:flex;gap:12px;align-items:flex-start;background:var(--surface);border-radius:14px;padding:14px;cursor:pointer}
+.priv input{width:22px;height:22px;flex:0 0 22px;margin:1px 0 0;accent-color:var(--accent);padding:0}
+.priv b{display:block;font-weight:600}
+.priv small{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+.pinwrap{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.45);display:grid;place-items:center;padding:18px}
+.pinbox{background:var(--bg);border-radius:20px;padding:22px 18px;width:100%;max-width:360px;display:grid;gap:12px}
+.pinbox h3{margin:0;font:700 22px/1.1 var(--display)}
+.pinbox p{margin:0;color:var(--muted);font-size:14px}
+.newloc .btn{flex:0 0 auto}
+.cl{display:flex;flex-wrap:wrap;gap:6px 12px}
+.cli{display:inline-flex;align-items:center;gap:6px}
+.cli .dot{width:16px;height:16px;border-radius:5px;display:inline-block}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+select,input,textarea{width:100%;min-width:0;font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+select{appearance:none;-webkit-appearance:none;background-image:var(--chev);background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+.filters select{border-color:transparent;font-size:15px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}
+.card{border:0;background:none;padding:0;text-align:left;cursor:pointer;display:grid;gap:7px;min-width:0}
+.ph{aspect-ratio:3/4;border-radius:var(--r);background:var(--sunk);overflow:hidden;display:grid;place-items:center;color:var(--muted);font-size:13px}
+.ph img{width:100%;height:100%;object-fit:cover;display:block}
+img[data-file],img:not([src]){visibility:hidden}
+.broken{visibility:hidden}
+.cs{display:flex;width:100%;height:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain}
+.cs::-webkit-scrollbar{display:none}
+.cs img{flex:0 0 100%;width:100%;height:100%;object-fit:cover;scroll-snap-align:start;background:var(--sunk)}
+.cdots{position:absolute;left:0;right:0;bottom:7px;display:flex;justify-content:center;gap:4px;pointer-events:none}
+.cdots i{width:5px;height:5px;border-radius:50%;background:rgba(0,0,0,.22)}
+.cdots i.on{background:var(--accent)}
+.card b{font-weight:600;line-height:1.25;overflow-wrap:anywhere}
+.card small{color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.count{color:var(--muted);font-size:13px;margin-bottom:10px;font-variant-numeric:tabular-nums}
+.empty{text-align:center;color:var(--muted);padding:50px 10px;display:grid;gap:14px;justify-items:center}
+/* detail */
+.car{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:10px;scrollbar-width:none}
+.car::-webkit-scrollbar{display:none}
+.slide{flex:0 0 100%;scroll-snap-align:center;position:relative}
+.slide img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:var(--r);background:var(--sunk);display:block;max-height:70vh}
+.slide span.tag{background:var(--accent)}
+.slide .tag{position:absolute;left:12px;bottom:12px;background:rgba(0,0,0,.6);color:#fff;font-size:12px;padding:5px 10px;border-radius:999px;border:0;cursor:pointer}
+.dots{display:flex;justify-content:center;gap:6px;margin-top:10px}
+.dots i{width:6px;height:6px;border-radius:50%;background:var(--line)}
+.dots i.on{background:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:16px}
+.chip{background:var(--soft);border-radius:999px;padding:6px 12px;font-size:14px}
+.facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border-radius:var(--r);overflow:hidden;margin-top:16px}
+.facts div{background:var(--surface);padding:12px 14px;min-width:0}
+.facts dt{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.facts dd{margin:2px 0 0;overflow-wrap:anywhere}
+.notes{margin-top:14px;color:var(--muted)}
+/* buttons */
+.btn{border:0;border-radius:14px;padding:14px 18px;font-weight:600;cursor:pointer;background:var(--soft)}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--danger);background:none}
+.btn.danger.solid{background:var(--danger);color:#fff}
+.btn:disabled{opacity:.5}
+.actions{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap}
+.actions .btn{flex:1}
+.confirm{margin-top:14px;background:var(--surface);border-radius:var(--r);padding:16px;display:grid;gap:12px}
+/* form */
+.form{display:grid;gap:16px}
+.lbl{font-size:13px;font-weight:600;color:var(--muted);margin-bottom:6px;display:block}
+.photos{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px}
+.pt{flex:0 0 112px;aspect-ratio:3/4;border-radius:14px;overflow:hidden;position:relative;background:var(--sunk)}
+.pt img{width:100%;height:100%;object-fit:cover}
+.pt .x{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;cursor:pointer;font-size:15px;line-height:1}
+.pt .first{position:absolute;left:6px;bottom:6px;background:var(--surface);color:var(--ink);font-size:11px;font-weight:600;padding:2px 7px;border-radius:999px}
+.addp{flex:0 0 96px;aspect-ratio:3/4;border-radius:14px;border:1.5px dashed var(--line);background:none;cursor:pointer;color:var(--muted);display:grid;place-items:center;text-align:center;font-size:13px;padding:6px}
+.err{color:var(--danger);font-size:14px}
+.sticky{position:fixed;left:0;right:0;bottom:0;padding:12px 18px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(transparent,var(--bg) 30%);z-index:6}
+.sticky .btn{width:100%;max-width:724px;display:block;margin:0 auto;font-size:17px}
+.fab{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));width:58px;height:58px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:6}
+.fab svg{width:24px;height:24px}
+.toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-size:14px;z-index:20;white-space:nowrap}
+.loading{display:grid;place-items:center;min-height:60vh;color:var(--muted)}
+.spin{width:28px;height:28px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--ink);animation:s .8s linear infinite;margin:0 auto 12px}
+@keyframes s{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+</style>
+</head>
+<body>
+
+<section class="screen" id="sHome">
+  <div class="home">
+    <div>
+      <h1>Armari<br><span>Guasteví</span></h1>
+      <div class="sub" id="homeCount">Carregant…</div>
+    </div>
+    <div class="peekwrap" id="peekWrap"><div class="peekh">Últimes afegides</div><div class="peek" id="peek"></div></div>
+    <div class="choices">
+      <button class="choice primary" id="goAdd">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+        <span><b>Afegeix una peça</b><span>Fes fotos i guarda on la tens</span></span>
+      </button>
+      <button class="choice" id="goGallery">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></span>
+        <span><b>Veure l'armari</b><span>Galeria amb filtres i cerca</span></span>
+      </button>
+    </div>
+  </div>
+</section>
+
+<section class="screen" id="sGallery" hidden>
+  <div class="bar">
+    <button class="icon" data-back aria-label="Torna"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <h2>L'armari</h2>
+    <button class="icon" id="lockBtn" aria-label="Apartat privat"></button>
+  </div>
+  <div class="filters">
+    <input class="search" id="q" type="search" placeholder="Cerca per nom, marca, color…" aria-label="Cerca">
+    <div class="seg" id="fTipus"></div>
+    <div class="seg" id="fSeason"></div>
+    <div class="row2">
+      <select id="fNom" aria-label="Peça"></select>
+      <select id="fLoc" aria-label="Ubicació"></select>
+    </div>
+    <select id="fSort" aria-label="Ordre"><option value="armari">Ordena com un armari</option><option value="nom">Ordena per nom (A-Z)</option><option value="noves">Ordena per últimes afegides</option><option value="ubic">Ordena per ubicació</option><option value="peca">Ordena per tipus de peça (A-Z)</option></select>
+    <div class="fcolors" id="fColor" aria-label="Color"></div>
+  </div>
+  <div class="count" id="gCount"></div>
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="gEmpty" hidden></div>
+  <button class="fab" id="fab" aria-label="Afegeix una peça"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+</section>
+
+<section class="screen" id="sDetail" hidden></section>
+<section class="screen" id="sForm" hidden></section>
+<section class="screen" id="sWhite" hidden>
+  <div class="bar">
+    <button class="icon" data-back aria-label="Torna"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <h2>Fons blanc</h2>
+  </div>
+  <p class="wnote" id="wNote">Revisant les fotos…</p>
+  <div class="wgrid" id="wGrid"></div>
+  <div class="sticky"><button class="btn primary" id="wGo" disabled>Posa fons blanc</button></div>
+</section>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+"use strict";
+const KINDS=["Americana","Abric","Jaqueta","Armilla","Jersei","Rebeca","Dessuadora","Camisa","Blusa","Samarreta","Top","Vestit","Faldilla","Pantaló","Texans","Malles","Sabates","Botes","Botins","Sandàlies","Bambes","Bossa","Fulard","Cinturó","Barret","Mitjons","Mitges","Bragues","Sostenidors","Lligacames","Body","Combinació","Pijama","Banyador","Llençols","Funda de coixí","Funda nòrdica","Edredó","Manta","Tovallola","Barnús","Estovalles"];
+const HOME=["Llençols","Funda de coixí","Funda nòrdica","Edredó","Manta","Tovallola","Barnús","Estovalles"];
+const SHOES=["Sabates","Botes","Botins","Sandàlies","Bambes"];
+const INTIMATE=["Mitges","Bragues","Sostenidors","Lligacames","Body","Combinació"];
+const CONCERT="Roba de concert",CARRER="Roba de carrer",CASA="Roba de casa";
+const isConcert=p=>p.tipus===CONCERT;
+const isCasa=p=>p.tipus===CASA;
+const tipusLabel=p=>isConcert(p)?"Concert":isCasa(p)?"Casa":"Carrer";
+const kindOf=n=>{const t=String(n||"").trim(),l=t.toLowerCase();return KINDS.find(k=>l===k.toLowerCase()||l.startsWith(k.toLowerCase()+" "))||t};
+const SEASONS=["Hivern","Estiu","Tot l'any"];
+const LOCS=["Armari petit","Armari dreta","Armari esquerra","Perxes dreta","Perxes esquerra","Porta","Còmoda 1r calaix","Còmoda 2n calaix","Còmoda 3r calaix"];
+const COLORS=[["Negre","#111111"],["Blau marí","#1d2b4c"],["Granat","#6e1423"],["Vermell","#c8102e"],["Verd","#2e7d32"],["Blanc","#ffffff"],["Groc","#f2c200"],["Marró","#6b4226"],["Gris","#8c8c8c"],["Beix","#d9c4a3"],["Blau","#1f5fbf"],["Blau cel","#8ec5e8"],["Rosa","#f3a6b8"],["Fúcsia","#d1127a"],["Lila","#9b6fc4"],["Taronja","#ec7a1c"],["Daurat","#c9a227"],["Platejat","#c4c4c4"],["Multicolor","multi"]];
+const MULTI="conic-gradient(#c8102e,#f2c200,#2e7d32,#1f5fbf,#9b6fc4,#d1127a,#c8102e)";
+const colorBg=n=>{const c=COLORS.find(x=>x[0]===n);if(!c)return "var(--sunk)";return c[1]==="multi"?MULTI:c[1]};
+const splitColors=v=>String(v||"").split(",").map(x=>x.trim()).filter(Boolean);
+const swatch=(n,extra)=>`<span class="dot${extra||""}" style="background:${colorBg(n)}" title="${esc(n)}"></span>`;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const imgCache=new Map();let active=0;const waiting=[];
+let idbP=null;
+function idb(){if(!idbP)idbP=new Promise(res=>{try{const r=indexedDB.open("armari-guastevi",1);r.onupgradeneeded=()=>r.result.createObjectStore("img");r.onsuccess=()=>res(r.result);r.onerror=()=>res(null)}catch(e){res(null)}});return idbP}
+async function idbGet(k){const d=await idb();if(!d)return null;return new Promise(res=>{try{const q=d.transaction("img").objectStore("img").get(k);q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null)}catch(e){res(null)}})}
+async function idbPut(k,v){const d=await idb();if(!d)return;try{d.transaction("img","readwrite").objectStore("img").put(v,k)}catch(e){}}
+const preQ=[],preSeen=new Set();let preBusy=false;
+function prefetch(ids){ids.forEach(id=>{if(!preSeen.has(id)){preSeen.add(id);preQ.push(id)}});preTick()}
+async function preTick(){if(preBusy||!preQ.length)return;preBusy=true;
+  try{await new Promise(r=>setTimeout(r,1500));while(preQ.length){
+    if(active||waiting.length||pumpT){await new Promise(r=>setTimeout(r,600));continue}
+    const chunk=[];while(preQ.length&&chunk.length<10){const id=preQ.shift();if(imgCache.has(id+"T"))continue;if(await idbGet("t:"+id)||await idbGet("s:"+id))continue;chunk.push(id)}
+    if(!chunk.length)continue;
+    try{const m=await run("getImages",chunk,320);chunk.forEach(id=>{if(m&&m[id])idbPut("s:"+id,m[id])})}catch(e){await new Promise(r=>setTimeout(r,3000))}
+  }}finally{preBusy=false}}
+let pumpT=0;
+function pump(){
+  while(active<4&&waiting.length){
+    const j=waiting.shift();active++;
+    if(j.full){run("getImage",j.id,true).then(j.ok,j.ko).finally(()=>{active--;pump()});continue}
+    const batch=[j];while(batch.length<8){const k=waiting.findIndex(x=>!x.full);if(k<0)break;batch.push(waiting.splice(k,1)[0])}
+    run("getImages",batch.map(b=>b.id)).then(m=>{batch.forEach(b=>{const u=m&&m[b.id];if(u){idbPut("t:"+b.id,u);b.ok(u)}else b.ko(new Error("no image"))})},e=>batch.forEach(b=>b.ko(e))).finally(()=>{active--;pump()});
+  }
+}
+function getImg(id,full,small){const k=id+(full?"F":"T");if(!imgCache.has(k)){
+  const fetchIt=()=>new Promise((ok,ko)=>{waiting.push({id,full:!!full,ok,ko});if(!pumpT)pumpT=setTimeout(()=>{pumpT=0;pump()},30)});
+  const pr=full?fetchIt():idbGet("t:"+id).then(v=>v||(small?idbGet("s:"+id):null)).then(v=>v||fetchIt());
+  pr.catch(()=>imgCache.delete(k));imgCache.set(k,pr)}return imgCache.get(k)}
+function hydrate(root){(root||document).querySelectorAll("[data-file]").forEach(el=>{const id=el.dataset.file,full=el.dataset.full==="1",small=el.dataset.small==="1";el.removeAttribute("data-file");getImg(id,full,small).then(u=>{if(el.tagName==="IMG")el.src=u;else el.style.backgroundImage="url('"+u+"')"}).catch(()=>{el.classList.add("broken")})})}
+const run=(fn,...a)=>new Promise((ok,ko)=>google.script.run.withSuccessHandler(ok).withFailureHandler(ko)[fn](...a));
+let pieces=[],stack=["sHome"],pin=null,unlocked=false,hasPin=false;
+const ORDER=["Jersei","Rebeca","Dessuadora","Armilla","Americana","Jaqueta","Abric","Camisa","Blusa","Samarreta","Top","Body","Vestit","Faldilla","Texans","Pantaló","Malles","Sabates","Botins","Botes","Sandàlies","Bambes","Bossa","Fulard","Cinturó","Barret","Mitjons","Mitges","Bragues","Sostenidors","Lligacames","Combinació","Pijama","Banyador","Llençols","Funda de coixí","Funda nòrdica","Edredó","Manta","Tovallola","Barnús","Estovalles"];
+const ordIdx=p=>{const i=ORDER.indexOf(kindOf(p.nom));return i<0?ORDER.length:i};
+let sortBy="armari";try{sortBy=localStorage.getItem("armari-sort2")||"armari"}catch(e){}
+const f={season:"",tipus:"",nom:"",loc:"",q:"",color:""};
+
+function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2300)}
+const scrollPos={};
+function curScreen(){const c=[...document.querySelectorAll(".screen")].find(x=>!x.hidden);return c?c.id:null}
+function restoreScroll(id){const y=scrollPos[id]||0;requestAnimationFrame(()=>{window.scrollTo(0,y);setTimeout(()=>window.scrollTo(0,y),60)})}
+function show(id,push=true){const cur=curScreen();if(cur&&cur!==id)scrollPos[cur]=window.scrollY;document.querySelectorAll(".screen").forEach(s=>s.hidden=s.id!==id);if(push&&stack[stack.length-1]!==id)stack.push(id);if(push)window.scrollTo(0,0)}
+function back(){stack.pop();const id=stack[stack.length-1]||"sHome";show(id,false);if(id==="sGallery")renderGallery();if(id==="sHome")renderHome();restoreScroll(id)}
+document.addEventListener("click",e=>{if(e.target.closest("[data-back]"))back()});
+
+function showError(msg){const el=$("#homeCount");el.textContent=msg;el.style.color="var(--danger)"}
+window.addEventListener("error",e=>showError("Error de la pàgina: "+(e.message||"desconegut")));
+async function load(){
+  const slow=setTimeout(()=>showError("Està tardant molt a respondre. Recarrega la pàgina; si continua, mira «Execucions» a Apps Script."),25000);
+  try{const d=await run("getData",pin||"");pieces=d.pieces||[];unlocked=!!d.unlocked;hasPin=!!d.hasPin;if(pin&&!unlocked)pin=null;$("#homeCount").style.color=""}
+  catch(e){clearTimeout(slow);showError("No s'han pogut carregar les dades: "+(e&&e.message||e));return}
+  clearTimeout(slow);
+  renderHome();if(!$("#sGallery").hidden)renderGallery();
+}
+function photos(p){const a=[];if(p.coverExtra&&p.cover)a.push({file:p.cover,id:null});p.fotos.forEach(x=>a.push(x));if(!a.length&&p.cover)a.push({file:p.cover,id:null});return a}
+
+function renderHome(){
+  const pub=pieces.filter(p=>!p.privada);const n=pub.length;
+  $("#homeCount").textContent=n?`${n===1?"1 peça guardada":n+" peces guardades"}`:"Encara no hi ha cap peça";
+  const w=pub.filter(p=>p.cover).slice(-4).reverse();
+  $("#peek").innerHTML=w.map(p=>`<button type="button" class="pk" data-id="${esc(p.id)}" aria-label="${esc(p.nom)}"><span data-file="${esc(p.cover)}"></span></button>`).join("");
+  $("#peekWrap").hidden=!w.length;hydrate($("#peek"));
+  $("#peek").querySelectorAll(".pk").forEach(b=>b.onclick=()=>openDetail(b.dataset.id));
+}
+
+function locs(){return [...new Set([...LOCS,...pieces.map(p=>p.ubicacio).filter(Boolean)])]}
+function usedColors(){const u=new Set();pieces.forEach(p=>splitColors(p.color).forEach(c=>u.add(c)));return [...COLORS.map(c=>c[0]).filter(c=>u.has(c)),...[...u].filter(c=>!COLORS.some(x=>x[0]===c))]}
+function match(p){
+  if(f.season&&!(p.temporada===f.season||(p.temporada==="Tot l'any"&&f.season!=="Tot l'any")))return false;
+  if(f.tipus==="Concert"&&!isConcert(p))return false;
+  if(f.tipus==="Carrer"&&(isConcert(p)||isCasa(p)))return false;
+  if(f.tipus==="Casa"&&!isCasa(p))return false;
+  if(f.nom==="__calcat"){if(!SHOES.includes(kindOf(p.nom)))return false}else if(f.nom&&kindOf(p.nom)!==f.nom)return false;
+  if(f.loc&&p.ubicacio!==f.loc)return false;
+  if(f.color&&!splitColors(p.color).includes(f.color))return false;
+  if(f.q){const h=[p.nom,p.tipus,p.ubicacio,p.color,p.marca,p.talla,p.notes].join(" ").toLowerCase();if(!f.q.toLowerCase().split(/\s+/).every(w=>h.includes(w)))return false}
+  return true;
+}
+function renderGallery(){
+  $("#fSeason").innerHTML=["",...SEASONS].map(s=>`<button data-s="${esc(s)}" aria-pressed="${f.season===s}">${s||"Totes"}</button>`).join("");
+  $("#fSeason").querySelectorAll("button").forEach(b=>b.onclick=()=>{f.season=b.dataset.s;renderGallery()});
+  $("#fTipus").innerHTML=["","Concert","Carrer","Casa"].map(t=>`<button data-t="${t}" aria-pressed="${f.tipus===t}">${t||"Tot"}</button>`).join("");
+  $("#fTipus").querySelectorAll("button").forEach(b=>b.onclick=()=>{f.tipus=b.dataset.t;renderGallery()});
+  const usedN=[...new Set(pieces.map(p=>kindOf(p.nom)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ca"));
+  $("#fNom").innerHTML=`<option value="">Totes les peces</option>`+(usedN.some(t=>SHOES.includes(t))?`<option value="__calcat" ${f.nom==="__calcat"?"selected":""}>Tot el calçat</option>`:"")+usedN.map(t=>`<option ${t===f.nom?"selected":""}>${esc(t)}</option>`).join("");
+  drawLock();
+  const uc=usedColors();const fc=$("#fColor");fc.hidden=!uc.length;
+  fc.innerHTML=uc.map(c=>`<button type="button" class="swb" data-c="${esc(c)}" aria-pressed="${f.color===c}" aria-label="${esc(c)}" title="${esc(c)}">${swatch(c)}</button>`).join("")+(f.color?`<button type="button" class="clrc" id="clrColor">Tots els colors</button>`:"");
+  fc.querySelectorAll(".swb").forEach(b=>b.onclick=()=>{f.color=f.color===b.dataset.c?"":b.dataset.c;renderGallery()});
+  const cc=fc.querySelector("#clrColor");if(cc)cc.onclick=()=>{f.color="";renderGallery()};
+  const usedL=[...new Set(pieces.map(p=>p.ubicacio).filter(Boolean))].sort();
+  $("#fLoc").innerHTML=`<option value="">Totes les ubicacions</option>`+usedL.map(l=>`<option ${l===f.loc?"selected":""}>${esc(l)}</option>`).join("");
+  const pos=new Map(pieces.map((p,i)=>[p.id,i]));const byNom=(a,b)=>a.nom.localeCompare(b.nom,"ca");
+  const locIdx=l=>{const i=LOCS.indexOf(l);return i<0?(l?LOCS.length:LOCS.length+1):i};
+  const sorters={nom:byNom,noves:(a,b)=>pos.get(b.id)-pos.get(a.id),
+    ubic:(a,b)=>locIdx(a.ubicacio)-locIdx(b.ubicacio)||String(a.ubicacio).localeCompare(String(b.ubicacio),"ca")||byNom(a,b),
+    peca:(a,b)=>kindOf(a.nom).localeCompare(kindOf(b.nom),"ca")||byNom(a,b),
+    armari:(a,b)=>ordIdx(a)-ordIdx(b)||kindOf(a.nom).localeCompare(kindOf(b.nom),"ca")||byNom(a,b)};
+  $("#fSort").value=sortBy;
+  const grp=p=>isConcert(p)?1:isCasa(p)?2:0;const base=sorters[sortBy]||sorters.armari;
+  const list=pieces.filter(match).sort(sortBy==="noves"?base:(a,b)=>grp(a)-grp(b)||base(a,b));
+  $("#gCount").textContent=pieces.length?`${list.length} de ${pieces.length} peces`:"";
+  const em=$("#gEmpty");
+  if(!pieces.length){em.hidden=false;em.innerHTML=`<p>L'armari és buit. Afegeix la primera peça.</p><button class="btn primary" onclick="openForm()">Afegeix una peça</button>`}
+  else if(!list.length){em.hidden=false;em.innerHTML=`<p>Cap peça coincideix amb els filtres.</p><button class="btn" id="clr">Treu els filtres</button>`;$("#clr").onclick=()=>{Object.assign(f,{season:"",tipus:"",nom:"",loc:"",q:"",color:""});$("#q").value="";renderGallery()}}
+  else em.hidden=true;
+  const strip=p=>{if(!p.cover)return "Sense foto";const fs=[p.cover,...photos(p).map(x=>x.file).filter(f=>f&&f!==p.cover)];
+    if(fs.length<2)return `<img alt="" data-file="${esc(p.cover)}">`;
+    return `<div class="cs">${fs.map((f,i)=>`<img alt="" ${i?"data-small=\"1\" data-lazy":"data-file"}="${esc(f)}">`).join("")}</div><div class="cdots">${fs.map((_,i)=>`<i class="${i?"":"on"}"></i>`).join("")}</div>`};
+  $("#grid").innerHTML=list.map(p=>`<div class="card" role="button" tabindex="0" data-id="${esc(p.id)}"><div class="ph">${p.privada?`<span class="lockb">Privada</span>`:""}${strip(p)}</div><b>${esc(p.nom||"Sense nom")}</b><small>${esc([p.talla&&"Talla "+p.talla,p.ubicacio].filter(Boolean).join(" · "))}</small></div>`).join("");
+  $("#grid").querySelectorAll(".cs").forEach(cs=>{const dots=cs.nextElementSibling.children;cs.addEventListener("scroll",()=>{
+    cs.querySelectorAll("[data-lazy]").forEach(im=>{im.dataset.file=im.dataset.lazy;im.removeAttribute("data-lazy")});hydrate(cs);
+    const k=Math.round(cs.scrollLeft/cs.clientWidth);[...dots].forEach((d,i)=>d.classList.toggle("on",i===k))},{passive:true})});
+  prefetch([...$("#grid").querySelectorAll("[data-lazy]")].map(im=>im.dataset.lazy));
+  hydrate($("#grid"));$("#grid").querySelectorAll(".card").forEach(c=>{c.onclick=()=>openDetail(c.dataset.id);c.onkeydown=e=>{if(e.key==="Enter")openDetail(c.dataset.id)}});
+}
+$("#fNom").onchange=e=>{f.nom=e.target.value;renderGallery()};
+$("#fSort").onchange=e=>{sortBy=e.target.value;try{localStorage.setItem("armari-sort2",sortBy)}catch(_){}renderGallery()};
+$("#fLoc").onchange=e=>{f.loc=e.target.value;renderGallery()};
+$("#q").oninput=e=>{f.q=e.target.value.trim();renderGallery()};
+$("#goGallery").onclick=()=>{show("sGallery");renderGallery()};
+$("#goAdd").onclick=()=>openForm();
+$("#fab").onclick=()=>openForm();
+
+const LOCK_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+const UNLOCK_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/></svg>';
+function drawLock(){const b=$("#lockBtn");b.innerHTML=unlocked?UNLOCK_SVG:LOCK_SVG;b.classList.toggle("open",unlocked);b.setAttribute("aria-label",unlocked?"Amaga l'apartat privat":"Mostra l'apartat privat")}
+$("#lockBtn").onclick=async()=>{
+  if(unlocked){pin=null;unlocked=false;pieces=pieces.filter(p=>!p.privada);renderGallery();toast("Apartat privat amagat");return}
+  const p=await askPin(hasPin?"enter":"create");if(!p)return;
+  if(!hasPin){try{await run("setPin",p,"");hasPin=true}catch(e){toast(e.message||"No s'ha pogut desar");return}}
+  pin=p;await load();
+  if(!unlocked){toast("Contrasenya incorrecta");return}
+  renderGallery();toast("Apartat privat obert");
+};
+function askPin(mode){
+  return new Promise(done=>{
+    const w=document.createElement("div");w.className="pinwrap";
+    const create=mode==="create";
+    w.innerHTML=`<div class="pinbox" role="dialog" aria-modal="true"><h3>${create?"Crea la contrasenya":"Apartat privat"}</h3>
+      <p>${create?"Serveix per veure les peces privades. Tria'n una d'almenys 4 caràcters i no l'oblidis.":"Escriu la contrasenya per veure les peces privades."}</p>
+      <input type="password" id="pin1" inputmode="numeric" autocomplete="off" placeholder="Contrasenya">
+      ${create?`<input type="password" id="pin2" inputmode="numeric" autocomplete="off" placeholder="Repeteix-la">`:""}
+      <p class="err" id="pinErr" hidden></p>
+      <div class="actions" style="margin:0"><button class="btn" id="pinNo">Cancel·la</button><button class="btn primary" id="pinOk">${create?"Desa":"Entra"}</button></div></div>`;
+    document.body.append(w);
+    const p1=w.querySelector("#pin1"),p2=w.querySelector("#pin2"),er=w.querySelector("#pinErr");
+    const end=v=>{w.remove();done(v)};
+    const ok=()=>{const a=p1.value.trim();
+      if(a.length<4){er.textContent="Ha de tenir almenys 4 caràcters.";er.hidden=false;return}
+      if(create&&a!==p2.value.trim()){er.textContent="Les dues contrasenyes no coincideixen.";er.hidden=false;return}
+      end(a)};
+    w.querySelector("#pinOk").onclick=ok;w.querySelector("#pinNo").onclick=()=>end(null);
+    w.addEventListener("click",e=>{if(e.target===w)end(null)});
+    w.querySelectorAll("input").forEach(i=>i.addEventListener("keydown",e=>{if(e.key==="Enter")ok()}));
+    setTimeout(()=>p1.focus(),50);
+  });
+}
+
+let bgLib=null;
+async function loadBg(){if(!bgLib)bgLib=await import("https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.5/+esm");return bgLib}
+const loadImage=src=>new Promise((ok,ko)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=ko;i.src=src});
+async function whiteness(url){
+  const im=await loadImage(url);const w=60,h=Math.max(1,Math.round(im.naturalHeight*60/im.naturalWidth));
+  const c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d");x.drawImage(im,0,0,w,h);
+  const d=x.getImageData(0,0,w,h).data;let tot=0,wh=0;
+  for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++){if(xx>2&&xx<w-3&&yy>2&&yy<h-3)continue;const k=(yy*w+xx)*4,r=d[k],g=d[k+1],b=d[k+2];tot++;if(r>225&&g>225&&b>225&&Math.max(r,g,b)-Math.min(r,g,b)<22)wh++}
+  return tot?wh/tot:0;
+}
+async function onWhite(blob){
+  const bmp=await createImageBitmap(blob);const c=document.createElement("canvas");c.width=bmp.width;c.height=bmp.height;
+  const x=c.getContext("2d");x.fillStyle="#ffffff";x.fillRect(0,0,c.width,c.height);x.drawImage(bmp,0,0);
+  return c.toDataURL("image/jpeg",.88).split(",")[1];
+}
+function openWhite(){
+  const items=[];const seen=new Set();
+  pieces.forEach(p=>photos(p).forEach(ph=>{if(ph.file&&!seen.has(ph.file)){seen.add(ph.file);items.push({p,file:ph.file,sel:false,state:"check"})}}));
+  const g=$("#wGrid"),note=$("#wNote"),go=$("#wGo");
+  show("sWhite");go.disabled=true;go.textContent="Posa fons blanc";
+  if(!items.length){note.textContent="Encara no hi ha cap foto.";g.innerHTML="";return}
+  note.textContent=`Revisant ${items.length} fotos per veure quines no tenen el fons blanc…`;
+  g.innerHTML=items.map((it,i)=>`<label class="wit" data-i="${i}"><span class="wph"><img alt="" data-file="${esc(it.file)}"></span><input type="checkbox" disabled><span class="wname">${esc(it.p.nom||"Sense nom")}</span><span class="wst">Revisant…</span></label>`).join("");
+  hydrate(g);
+  const count=()=>{const n=items.filter(x=>x.sel&&x.state!=="done").length;go.disabled=!n;go.textContent=n?`Posa fons blanc a ${n} ${n===1?"foto":"fotos"}`:"Posa fons blanc"};
+  let checked=0;
+  items.forEach((it,i)=>{const el=g.querySelector(`[data-i="${i}"]`),cb=el.querySelector("input"),st=el.querySelector(".wst");
+    cb.onchange=()=>{it.sel=cb.checked;count()};
+    getImg(it.file,false).then(whiteness).then(f=>{it.white=f>.8;it.sel=!it.white;cb.checked=it.sel;cb.disabled=false;st.textContent=it.white?"Ja és blanca":"Fons del pis";el.classList.toggle("ok",it.white)})
+      .catch(()=>{cb.disabled=false;st.textContent="No s'ha pogut revisar"})
+      .finally(()=>{checked++;if(checked===items.length){const n=items.filter(x=>!x.white).length;note.textContent=n?`${n} de ${items.length} fotos no tenen el fons blanc. Ja estan marcades: revisa-les i prem el botó. Les originals aniran a la paperera del Drive.`:"Totes les fotos ja tenen el fons blanc."}count()})});
+  go.onclick=async()=>{
+    const todo=items.filter(x=>x.sel&&x.state!=="done");if(!todo.length)return;
+    go.disabled=true;let done=0,fail=0;
+    note.textContent="Carregant el detector de fons (la primera vegada tarda una mica)…";
+    let lib;try{lib=await loadBg()}catch(e){note.textContent="No s'ha pogut carregar el detector de fons: "+(e&&e.message||e);go.disabled=false;return}
+    for(const it of todo){
+      const el=g.querySelector(`[data-i="${items.indexOf(it)}"]`),st=el.querySelector(".wst");
+      st.textContent="Processant…";el.classList.add("busy");
+      note.textContent=`Processant foto ${done+fail+1} de ${todo.length}…`;
+      try{
+        const src=await getImg(it.file,true);const blob=await (await fetch(src)).blob();
+        const cut=await lib.removeBackground(blob,{output:{format:"image/png"}});
+        const b64=await onWhite(cut);
+        const nid=await run("replacePhoto",it.p.id,it.file,b64);
+        el.querySelector("img").src="data:image/jpeg;base64,"+b64;
+        it.state="done";it.file=nid;st.textContent="Fet";el.classList.add("ok");done++;
+      }catch(e){st.textContent="Error: "+(e&&e.message||e);fail++}
+      el.classList.remove("busy");
+    }
+    note.textContent=`Fet: ${done} ${done===1?"foto":"fotos"} amb fons blanc`+(fail?`, ${fail} amb error`:"")+".";
+    imgCache.clear();await load();count();
+  };
+}
+
+function openDetail(id){
+  const p=pieces.find(x=>x.id===id);if(!p)return;
+  const ph=photos(p),s=$("#sDetail");
+  const fact=(k,v)=>v?`<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`:"";
+  s.innerHTML=`<div class="bar"><button class="icon" data-back aria-label="Torna"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button><h2>${esc(p.nom)}</h2></div>
+  ${ph.length?`<div class="car" id="car">${ph.map(x=>`<div class="slide"><img alt="" data-file="${esc(x.file)}" data-full="1">${x.file===p.cover?`<span class="tag">Portada</span>`:x.id?`<button class="tag" data-cover="${esc(x.id)}">Fes-la portada</button>`:""}</div>`).join("")}</div>${ph.length>1?`<div class="dots">${ph.map((_,i)=>`<i class="${i?"":"on"}"></i>`).join("")}</div>`:""}`:`<div class="ph" style="aspect-ratio:4/3">Sense fotos</div>`}
+  <div class="chips">${[tipusLabel(p),p.temporada,p.privada?"Privada":""].filter(Boolean).map(x=>`<span class="chip">${esc(x)}</span>`).join("")}</div>
+  <dl class="facts">${fact("Ubicació",p.ubicacio)}${fact("Talla",p.talla)}${fact("Marca",p.marca)}${p.color?`<div><dt>Color</dt><dd class="cl">${splitColors(p.color).map(c=>`<span class="cli">${swatch(c)}${esc(c)}</span>`).join("")}</dd></div>`:""}</dl>
+  ${p.notes?`<p class="notes">${esc(p.notes)}</p>`:""}
+  <div class="actions"><button class="btn" id="dEdit">Edita</button><button class="btn danger" id="dDel">Elimina</button></div>
+  <div id="dConf"></div>`;
+  if(!s.querySelector(".facts div"))s.querySelector(".facts").remove();
+  hydrate(s);show("sDetail");
+  const car=s.querySelector("#car");
+  if(car)car.addEventListener("scroll",()=>{const i=Math.round(car.scrollLeft/(car.clientWidth+10));s.querySelectorAll(".dots i").forEach((d,j)=>d.className=j===i?"on":"")});
+  s.querySelectorAll("[data-cover]").forEach(b=>b.onclick=async()=>{b.disabled=true;try{await run("setCover",p.id,b.dataset.cover);await load();toast("Portada canviada");openDetail(p.id)}catch(e){b.disabled=false;toast("No s'ha pogut canviar")}});
+  s.querySelector("#dEdit").onclick=()=>openForm(p);
+  s.querySelector("#dDel").onclick=()=>{
+    const c=s.querySelector("#dConf");
+    c.innerHTML=`<div class="confirm"><div>Vols eliminar «${esc(p.nom)}» i les seves fotos? Les fotos aniran a la paperera de Drive.</div><div class="actions" style="margin:0"><button class="btn" id="cNo">Cancel·la</button><button class="btn danger solid" id="cYes">Elimina</button></div></div>`;
+    c.querySelector("#cNo").onclick=()=>c.innerHTML="";
+    c.querySelector("#cYes").onclick=async e=>{e.target.disabled=true;e.target.textContent="Eliminant…";try{await run("deletePiece",p.id);pieces=pieces.filter(x=>x.id!==p.id);toast("Peça eliminada");back();load()}catch(err){e.target.disabled=false;e.target.textContent="Elimina";toast("No s'ha pogut eliminar")}};
+  };
+}
+
+async function shrink(file){
+  try{
+    const bmp=await createImageBitmap(file,{imageOrientation:"from-image"});
+    const sc=Math.min(1,1600/Math.max(bmp.width,bmp.height));
+    const c=document.createElement("canvas");c.width=Math.round(bmp.width*sc);c.height=Math.round(bmp.height*sc);
+    c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);
+    return c.toDataURL("image/jpeg",.84).split(",")[1];
+  }catch(e){
+    return await new Promise((ok,ko)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(",")[1]);r.onerror=ko;r.readAsDataURL(file)});
+  }
+}
+
+function openForm(p){
+  const edit=!!p;
+  const st={season:p?.temporada||"Tot l'any",list:(p?photos(p).filter(x=>x.id):[]).map(x=>({k:"e",id:x.id,file:x.file})),removed:[],reordered:false};
+  if(p){const ci=st.list.findIndex(x=>x.file===p.cover);if(ci>0){st.list.unshift(st.list.splice(ci,1)[0])}}
+  const s=$("#sForm");
+  const opt=(arr,v,ph)=>`<option value="">${ph}</option>`+arr.map(x=>`<option ${x===v?"selected":""}>${esc(x)}</option>`).join("");
+  st.tipus=p?(isConcert(p)?CONCERT:isCasa(p)?CASA:CARRER):CARRER;st.privada=!!p?.privada;
+  const curNom=String(p?.nom||"").trim();
+  const nomList=[...new Set([...KINDS,...pieces.map(x=>String(x.nom||"").trim()).filter(x=>x&&!KINDS.includes(x))])];
+  const nomOpts=`<option value="">Tria la peça</option>`+nomList.map(x=>`<option ${x===curNom?"selected":""}>${esc(x)}</option>`).join("")+`<option value="__other">Una altra…</option>`;
+  s.innerHTML=`<div class="bar"><button class="icon" data-back aria-label="Torna"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button><h2>${edit?"Edita la peça":"Nova peça"}</h2></div>
+  <div class="form">
+    <div><span class="lbl">Fotos · la primera és la portada. Mantén premuda una foto i arrossega-la per canviar l'ordre</span><div class="photos" id="pp"></div><input type="file" id="file" accept="image/\x2a" multiple hidden></div>
+    <div><label class="lbl" for="nomSel">Peça</label><select id="nomSel">${nomOpts}</select>
+      <input id="nomOther" placeholder="Escriu quina peça és" hidden style="margin-top:8px"></div>
+    <div><span class="lbl">Tipus</span><div class="seg" id="tipusSeg"><button type="button" data-t="${CONCERT}" aria-pressed="${st.tipus===CONCERT}">Concert</button><button type="button" data-t="${CARRER}" aria-pressed="${st.tipus===CARRER}">Carrer</button><button type="button" data-t="${CASA}" aria-pressed="${st.tipus===CASA}">Casa</button></div></div>
+    <div><span class="lbl">Temporada</span><div class="seg" id="season">${SEASONS.map(x=>`<button type="button" data-s="${esc(x)}" aria-pressed="${x===st.season}">${x}</button>`).join("")}</div></div>
+    <div class="row2">
+      <div><label class="lbl" for="talla">Talla</label><input id="talla" placeholder="M, 38, 40…" value="${esc(p?.talla)}"></div>
+      <div><label class="lbl" for="marca">Marca</label><input id="marca" placeholder="Marca" value="${esc(p?.marca)}"></div>
+    </div>
+    <div><span class="lbl">Color <span class="hint" id="colorName"></span></span><div class="sw" id="colors">${COLORS.map(c=>`<button type="button" class="swb" data-c="${esc(c[0])}" aria-pressed="false" aria-label="${esc(c[0])}" title="${esc(c[0])}">${swatch(c[0])}</button>`).join("")}</div></div>
+    <div><span class="lbl">Ubicació</span><div class="pills" id="locs"></div>
+      <div class="newloc" id="newLocBox" hidden><input id="newLoc" placeholder="Nom del lloc nou"><button type="button" class="btn" id="newLocOk">Afegeix</button></div></div>
+    <label class="priv"><input type="checkbox" id="privada" ${st.privada?"checked":""}><span><b>Peça privada</b><small>No surt a la galeria ni a la cerca si no entres la contrasenya</small></span></label>
+    <div><label class="lbl" for="notes">Notes</label><textarea id="notes" rows="2" placeholder="Per a quin concert, si cal planxar…">${esc(p?.notes)}</textarea></div>
+    <p class="err" id="ferr" hidden></p>
+  </div>
+  <div class="sticky"><button class="btn primary" id="save">${edit?"Desa els canvis":"Desa la peça"}</button></div>`;
+  show("sForm");
+  const nomSel=s.querySelector("#nomSel"),nomOther=s.querySelector("#nomOther"),privBox=s.querySelector("#privada");
+  nomSel.onchange=()=>{const v=nomSel.value;nomOther.hidden=v!=="__other";if(v==="__other")nomOther.focus();if(INTIMATE.includes(v))privBox.checked=true;if(HOME.includes(v)){st.tipus=CASA;s.querySelectorAll("#tipusSeg button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.t===CASA))}};
+  s.querySelectorAll("#tipusSeg button").forEach(b=>b.onclick=()=>{st.tipus=b.dataset.t;s.querySelectorAll("#tipusSeg button").forEach(x=>x.setAttribute("aria-pressed",x===b))});
+  st.colors=splitColors(p?.color);st.loc=p?.ubicacio||"";st.extraLocs=[];
+  const colorBox=s.querySelector("#colors"),colorName=s.querySelector("#colorName");
+  function drawColors(){colorBox.querySelectorAll(".swb").forEach(b=>b.setAttribute("aria-pressed",st.colors.includes(b.dataset.c)));colorName.textContent=st.colors.length?"· "+st.colors.join(", "):"· toca'n un o més"}
+  colorBox.querySelectorAll(".swb").forEach(b=>b.onclick=()=>{const c=b.dataset.c;st.colors=st.colors.includes(c)?st.colors.filter(x=>x!==c):[...st.colors,c];drawColors()});
+  drawColors();
+  const locBox=s.querySelector("#locs"),nlBox=s.querySelector("#newLocBox"),nl=s.querySelector("#newLoc");
+  function drawLocs(){const all=[...new Set([...locs(),...st.extraLocs,...(st.loc?[st.loc]:[])])];
+    locBox.innerHTML=all.map(l=>`<button type="button" class="pill" data-l="${esc(l)}" aria-pressed="${l===st.loc}">${esc(l)}</button>`).join("")+`<button type="button" class="pill add" id="addLoc">+ Un altre lloc</button>`;
+    locBox.querySelectorAll(".pill[data-l]").forEach(b=>b.onclick=()=>{st.loc=st.loc===b.dataset.l?"":b.dataset.l;drawLocs()});
+    locBox.querySelector("#addLoc").onclick=()=>{nlBox.hidden=false;nl.focus()}}
+  function addLoc(){const v=nl.value.trim();if(!v)return;st.extraLocs.push(v);st.loc=v;nl.value="";nlBox.hidden=true;drawLocs()}
+  s.querySelector("#newLocOk").onclick=addLoc;nl.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();addLoc()}});
+  drawLocs();
+  s.querySelectorAll("#season button").forEach(b=>b.onclick=()=>{st.season=b.dataset.s;s.querySelectorAll("#season button").forEach(x=>x.setAttribute("aria-pressed",x===b))});
+  const pp=s.querySelector("#pp"),fi=s.querySelector("#file"),err=s.querySelector("#ferr");
+  const ARW_L='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>';
+  const ARW_R='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>';
+  function move(i,j){if(j<0||j>=st.list.length||i===j)return;const it=st.list.splice(i,1)[0];st.list.splice(j,0,it);st.reordered=true;drawPhotos()}
+  let dragFrom=null,tdrag=null;
+  function drawPhotos(){
+    const n=st.list.length;
+    pp.innerHTML=st.list.map((o,i)=>`<div class="pt" draggable="true" data-i="${i}">${o.k==="e"?`<img alt="" data-file="${esc(o.file)}" draggable="false">`:`<img alt="" src="${o.url}" draggable="false">`}
+      <button type="button" class="x" data-i="${i}" aria-label="Treu la foto">×</button>
+      ${n>1?`<div class="mv"><button type="button" data-m="-1" data-i="${i}" aria-label="Mou a l'esquerra" ${i===0?"disabled":""}>${ARW_L}</button><button type="button" data-m="1" data-i="${i}" aria-label="Mou a la dreta" ${i===n-1?"disabled":""}>${ARW_R}</button></div>`:""}</div>`).join("")+`<button type="button" class="addp" id="addp">+ Afegeix fotos</button>`;
+    pp.querySelectorAll(".x").forEach(b=>b.onclick=()=>{const i=+b.dataset.i;const it=st.list.splice(i,1)[0];if(it.k==="e")st.removed.push(it);st.reordered=true;drawPhotos()});
+    pp.querySelectorAll(".mv button").forEach(b=>b.onclick=()=>{const i=+b.dataset.i;move(i,i+(+b.dataset.m))});
+    pp.querySelectorAll(".pt").forEach(el=>{
+      el.addEventListener("dragstart",e=>{dragFrom=+el.dataset.i;el.classList.add("dragging");try{e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",el.dataset.i)}catch(_){}});
+      el.addEventListener("dragend",()=>{el.classList.remove("dragging");pp.querySelectorAll(".over").forEach(x=>x.classList.remove("over"))});
+      el.addEventListener("dragover",e=>{e.preventDefault();el.classList.add("over")});
+      el.addEventListener("dragleave",()=>el.classList.remove("over"));
+      el.addEventListener("drop",e=>{e.preventDefault();const to=+el.dataset.i;if(dragFrom!==null)move(dragFrom,to);dragFrom=null});
+      el.addEventListener("touchstart",e=>{
+        if(e.target.closest("button")||e.touches.length>1)return;
+        const t=e.touches[0];const td={from:+el.dataset.i,to:+el.dataset.i,x:t.clientX,y:t.clientY,active:false,el};tdrag=td;
+        td.timer=setTimeout(()=>{if(tdrag!==td)return;td.active=true;el.classList.add("dragging");
+          const r=el.getBoundingClientRect();const g=el.cloneNode(true);g.className="pt ghost";g.style.width=r.width+"px";g.style.height=r.height+"px";
+          td.dx=td.x-r.left;td.dy=td.y-r.top;g.style.left=(td.x-td.dx)+"px";g.style.top=(td.y-td.dy)+"px";document.body.append(g);td.ghost=g;
+          try{navigator.vibrate&&navigator.vibrate(12)}catch(_){}},230);
+      },{passive:true});
+      el.addEventListener("touchmove",e=>{
+        const td=tdrag;if(!td||td.el!==el)return;const t=e.touches[0];
+        if(!td.active){if(Math.hypot(t.clientX-td.x,t.clientY-td.y)>8){clearTimeout(td.timer);tdrag=null}return}
+        e.preventDefault();td.ghost.style.left=(t.clientX-td.dx)+"px";td.ghost.style.top=(t.clientY-td.dy)+"px";
+        td.ghost.style.display="none";const over=document.elementFromPoint(t.clientX,t.clientY);td.ghost.style.display="";
+        const ov=over&&over.closest&&over.closest("#pp .pt");pp.querySelectorAll(".over").forEach(x=>{if(x!==ov)x.classList.remove("over")});
+        if(ov){ov.classList.add("over");td.to=+ov.dataset.i}
+        const pr=pp.getBoundingClientRect();if(t.clientX<pr.left+40)pp.scrollLeft-=12;else if(t.clientX>pr.right-40)pp.scrollLeft+=12;
+      },{passive:false});
+      const endT=()=>{const td=tdrag;if(!td||td.el!==el)return;clearTimeout(td.timer);tdrag=null;
+        if(td.active){td.ghost&&td.ghost.remove();el.classList.remove("dragging");pp.querySelectorAll(".over").forEach(x=>x.classList.remove("over"));if(td.to!==td.from)move(td.from,td.to)}};
+      el.addEventListener("touchend",endT);el.addEventListener("touchcancel",endT);
+      el.addEventListener("contextmenu",e=>e.preventDefault());
+    });
+    pp.querySelector("#addp").onclick=()=>fi.click();hydrate(pp);
+  }
+  drawPhotos();
+  fi.onchange=()=>{[...fi.files].forEach(file=>st.list.push({k:"a",file,url:URL.createObjectURL(file)}));fi.value="";drawPhotos()};
+  s.querySelector("#save").onclick=async e=>{
+    const nom=(nomSel.value==="__other"?nomOther.value:nomSel.value).trim();
+    if(!nom){err.textContent="Tria quina peça és.";err.hidden=false;nomSel.focus();return}
+    const privada=privBox.checked;
+    if(privada&&!hasPin){const np=await askPin("create");if(!np)return;try{await run("setPin",np,"");hasPin=true;pin=np}catch(x){err.textContent=x.message||String(x);err.hidden=false;return}}
+    err.hidden=true;const btn=e.target;btn.disabled=true;btn.textContent="Desant…";
+    const data={id:p?.id||"",nom,privada,tipus:st.tipus,temporada:st.season,talla:s.querySelector("#talla").value.trim(),marca:s.querySelector("#marca").value.trim(),ubicacio:(nl.value.trim()&&!nlBox.hidden)?nl.value.trim():st.loc,color:st.colors.join(", "),notes:s.querySelector("#notes").value.trim()};
+    try{
+      const id=await run("savePiece",data);
+      for(const r of st.removed){await run("removePhoto",id,r.id)}
+      const added=st.list.filter(o=>o.k==="a");
+      for(let i=0;i<added.length;i++){btn.textContent=`Pujant fotos ${i+1} de ${added.length}…`;const r=await run("addPhoto",id,await shrink(added[i].file),"image/jpeg");added[i].id=r.id}
+      if(st.list.length&&(st.reordered||added.length)){btn.textContent="Desant l'ordre…";await run("reorderPhotos",id,st.list.map(o=>o.id).filter(Boolean))}
+      btn.textContent="Actualitzant…";
+      await load();
+      const hiddenNow=!pieces.some(x=>x.id===id);
+      toast(hiddenNow?"Desada a l'apartat privat":(edit?"Canvis desats":"Peça afegida"));
+      stack=stack.filter(x=>x!=="sForm"&&x!=="sDetail");
+      if(!stack.includes("sGallery"))stack.push("sGallery");
+      if(hiddenNow||edit){show("sGallery",false);renderGallery();restoreScroll("sGallery");
+        if(!hiddenNow)setTimeout(()=>{const c=[...document.querySelectorAll("#grid .card")].find(x=>x.dataset.id===id);if(c){c.classList.add("flash");setTimeout(()=>c.classList.remove("flash"),1600)}},120)}
+      else{renderGallery();openDetail(id)}
+    }catch(x){btn.disabled=false;btn.textContent=edit?"Desa els canvis":"Desa la peça";err.textContent="No s'ha pogut desar: "+(x&&x.message||"error de connexió")+". Torna-ho a provar.";err.hidden=false}
+  };
+}
+
+load();
+window.openForm=openForm;
+})();
+</script>
+</body>
+</html>
