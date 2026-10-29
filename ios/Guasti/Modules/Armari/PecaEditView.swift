@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 struct PecaEditView: View {
     @State var peca: Peca
@@ -13,6 +14,10 @@ struct PecaEditView: View {
     @State private var confirmDelete = false
     @State private var addingLocation = false
     @State private var newLocation = ""
+    @State private var pending: [PendingPhoto] = []
+    @State private var pickerItems: [PhotosPickerItem] = []
+    @State private var showCamera = false
+    @State private var status: String?
 
     private var nomOptions: [String] {
         var seen = Set<String>()
@@ -33,6 +38,8 @@ struct PecaEditView: View {
 
     var body: some View {
         Form {
+            photosSection
+
             Section {
                 SuggestField(title: "Peça", text: $peca.nom, options: nomOptions)
             }
@@ -121,6 +128,21 @@ struct PecaEditView: View {
                 }
             }
         }
+        .fullScreenCover(isPresented: $showCamera) {
+            CameraPicker { image in addPending(image) }
+                .ignoresSafeArea()
+        }
+        .onChange(of: pickerItems) { _, items in
+            guard !items.isEmpty else { return }
+            Task {
+                for item in items {
+                    if let data = try? await item.loadTransferable(type: Data.self), let image = UIImage(data: data) {
+                        addPending(image)
+                    }
+                }
+                pickerItems = []
+            }
+        }
         .navigationTitle(isNew ? "Peça nova" : "Edita")
         .navigationBarTitleDisplayMode(.inline)
         .disabled(saving)
@@ -130,7 +152,10 @@ struct PecaEditView: View {
             }
             ToolbarItem(placement: .confirmationAction) {
                 if saving {
-                    ProgressView()
+                    HStack(spacing: 6) {
+                        if let status { Text(status).font(.footnote) }
+                        ProgressView()
+                    }
                 } else {
                     Button("Desa") { Task { await save() } }
                         .disabled(peca.nom.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -149,11 +174,79 @@ struct PecaEditView: View {
         }
     }
 
+    private var photosSection: some View {
+        Section {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(pending) { photo in
+                        Image(uiImage: photo.preview)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 84, height: 112)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .overlay(alignment: .topTrailing) {
+                                Button {
+                                    pending.removeAll { $0.id == photo.id }
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.title3)
+                                        .symbolRenderingMode(.palette)
+                                        .foregroundStyle(.white, .black.opacity(0.6))
+                                }
+                                .buttonStyle(.plain)
+                                .padding(4)
+                                .accessibilityLabel("Treu la foto")
+                            }
+                            .overlay(alignment: .bottomLeading) {
+                                if isNew, photo.id == pending.first?.id {
+                                    Text("Portada")
+                                        .font(.caption2.weight(.semibold))
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 2)
+                                        .background(.thinMaterial, in: Capsule())
+                                        .padding(5)
+                                }
+                            }
+                    }
+                }
+            }
+            HStack {
+                PhotosPicker(selection: $pickerItems, maxSelectionCount: 10, matching: .images) {
+                    Label("Galeria", systemImage: "photo.on.rectangle")
+                }
+                Spacer()
+                Button {
+                    showCamera = true
+                } label: {
+                    Label("Fes una foto", systemImage: "camera")
+                }
+            }
+            .buttonStyle(.borderless)
+        } header: {
+            Text(isNew ? "Fotos" : "Afegeix fotos")
+        } footer: {
+            Text(isNew ? "Per exemple, una de davant i una de darrere. La primera serà la portada." : "Es pujaran quan toquis Desa.")
+        }
+    }
+
+    private func addPending(_ image: UIImage) {
+        guard let jpeg = ImageUtil.jpegForUpload(image) else { return }
+        pending.append(PendingPhoto(jpeg: jpeg, preview: UIImage(data: jpeg) ?? image))
+    }
+
     private func save() async {
         saving = true
-        defer { saving = false }
+        defer {
+            saving = false
+            status = nil
+        }
         do {
             try await store.save(peca)
+            while let photo = pending.first {
+                status = "Pujant fotos…"
+                try await store.addPhoto(photo.jpeg, to: peca.id)
+                pending.removeFirst()
+            }
             dismiss()
         } catch {
             errorText = error.localizedDescription
@@ -208,4 +301,11 @@ struct SuggestField: View {
             text = option
         }
     }
+}
+
+/// Una foto triada o feta abans de desar la peça.
+struct PendingPhoto: Identifiable {
+    let id = UUID()
+    let jpeg: Data
+    let preview: UIImage
 }
