@@ -1,0 +1,91 @@
+name: Compila Guasti
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instal·la XcodeGen
+        run: brew install xcodegen
+
+      - name: Genera el projecte
+        working-directory: ios
+        run: |
+          sed -i '' "s/CURRENT_PROJECT_VERSION: \"1\"/CURRENT_PROJECT_VERSION: \"${{ github.run_number }}\"/" project.yml
+          xcodegen generate
+
+      - name: Compila (sense signar; SideStore la signa al mòbil)
+        working-directory: ios
+        run: |
+          xcodebuild \
+            -project Guasti.xcodeproj \
+            -scheme Guasti \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/Guasti.app Payload/
+          zip -qry Guasti.ipa Payload
+          ls -lh Guasti.ipa
+
+      - name: Font per a SideStore (actualitzacions automàtiques)
+        working-directory: ios
+        run: |
+          SIZE=$(stat -f%z Guasti.ipa)
+          DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          URL="https://github.com/${{ github.repository }}/releases/download/build-${{ github.run_number }}/Guasti.ipa"
+          ICON="https://raw.githubusercontent.com/${{ github.repository }}/main/ios/Guasti/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png"
+          cat > sidestore.json <<EOF
+          {
+            "name": "Guasti",
+            "identifier": "cat.guasti.source",
+            "apps": [{
+              "name": "Guasti",
+              "bundleIdentifier": "cat.guasti.app",
+              "developerName": "Guasteví",
+              "localizedDescription": "Les meves apps: Armari, Gastos i Partitures.",
+              "iconURL": "$ICON",
+              "tintColor": "E8417A",
+              "versions": [{
+                "version": "1.0.${{ github.run_number }}",
+                "buildVersion": "${{ github.run_number }}",
+                "date": "$DATE",
+                "downloadURL": "$URL",
+                "size": $SIZE,
+                "minOSVersion": "17.0"
+              }]
+            }],
+            "news": []
+          }
+          EOF
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Guasti
+          path: ios/Guasti.ipa
+
+      - name: Publica
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Guasti 1.0.${{ github.run_number }}
+          files: ios/Guasti.ipa
+
+      - name: Actualitza la font de SideStore
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: sidestore
+          name: Font de SideStore
+          files: ios/sidestore.json
