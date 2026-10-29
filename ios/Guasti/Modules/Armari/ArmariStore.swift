@@ -122,7 +122,8 @@ final class ArmariStore: ObservableObject {
         saveSnapshot()
     }
 
-    func addPhoto(_ jpeg: Data, to pecaID: String) async throws {
+    @discardableResult
+    func addPhoto(_ jpeg: Data, to pecaID: String) async throws -> Foto {
         let response: AddPhotoResponse = try await requireClient().call("armari.addPhoto", [
             "pieceId": pecaID,
             "base64": jpeg.base64EncodedString(),
@@ -131,6 +132,7 @@ final class ArmariStore: ObservableObject {
         if let portada = response.portada { setLocalCover(portada, for: pecaID) }
         await PhotoLoader.shared.prime(jpeg, for: response.foto.path)
         saveSnapshot()
+        return response.foto
     }
 
     func deletePhoto(_ foto: Foto) async throws {
@@ -140,9 +142,31 @@ final class ArmariStore: ObservableObject {
         saveSnapshot()
     }
 
+    /// Posa una foto com a portada i la mou al primer lloc, com l'app web.
     func setCover(_ foto: Foto) async throws {
-        let _: CoverResponse = try await requireClient().call("armari.setCover", ["pieceId": foto.peca, "path": foto.path])
-        setLocalCover(foto.path, for: foto.peca)
+        guard let peca = peca(foto.peca) else { return }
+        let ids = [foto.id] + photos(for: peca).map(\.id).filter { $0 != foto.id && !$0.hasPrefix("portada-") }
+        do {
+            try await reorder(ids, for: foto.peca)
+        } catch let error as APIError where error.message.hasPrefix("Acció desconeguda") {
+            // Script encara sense actualitzar: almenys canvia la portada.
+            let _: CoverResponse = try await requireClient().call("armari.setCover", ["pieceId": foto.peca, "path": foto.path])
+            setLocalCover(foto.path, for: foto.peca)
+            saveSnapshot()
+        }
+    }
+
+    /// Desa l'ordre de les fotos d'una peça. La primera passa a ser la portada.
+    func reorder(_ ids: [String], for pecaID: String) async throws {
+        let ids = ids.filter { !$0.hasPrefix("portada-") }
+        guard !ids.isEmpty else { return }
+        let response: CoverResponse = try await requireClient().call("armari.reorder", ["pieceId": pecaID, "ids": ids])
+        for (k, id) in ids.enumerated() {
+            if let i = fotos.firstIndex(where: { $0.id == id && $0.peca == pecaID }) {
+                fotos[i].ordre = String(k + 1)
+            }
+        }
+        if let portada = response.portada, !portada.isEmpty { setLocalCover(portada, for: pecaID) }
         saveSnapshot()
     }
 

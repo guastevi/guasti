@@ -52,6 +52,7 @@ function handle_(p) {
     'armari.addPhoto': () => withLock_(() => armariAddPhoto_(p.pieceId, p.base64)),
     'armari.deletePhoto': () => withLock_(() => armariDeletePhoto_(p.photoId)),
     'armari.setCover': () => withLock_(() => armariSetCover_(p.pieceId, p.path)),
+    'armari.reorder': () => withLock_(() => armariReorder_(p.pieceId, p.ids)),
   };
 
   const fn = actions[p.action];
@@ -164,6 +165,23 @@ function armariSetCover_(pieceId, path) {
   if (idx < 0) throw new Error('No trobo la peça');
   sheet.getRange(idx + 2, t.col.Portada + 1).setValue(path || '');
   return { portada: path || '' };
+}
+
+/** Desa l'ordre de les fotos d'una peça (com l'app web). La primera passa a ser la portada. */
+function armariReorder_(pieceId, ids) {
+  if (!pieceId || !ids || !ids.length) throw new Error("Falta l'ordre de les fotos");
+  const sheet = fotosSheet_();
+  const f = readTable_(sheet);
+  let firstPath = '';
+  f.rows.forEach((r, i) => {
+    if (String(r[f.col['Peça']]) !== String(pieceId)) return;
+    const k = ids.indexOf(String(r[f.col.ID]));
+    if (k < 0) return;
+    sheet.getRange(i + 2, f.col.Ordre + 1).setValue(k + 1);
+    if (k === 0) firstPath = String(r[f.col.Foto]);
+  });
+  if (firstPath) armariSetCover_(pieceId, firstPath);
+  return { portada: firstPath };
 }
 
 function coverOf_(pieceId) {

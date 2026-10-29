@@ -9,6 +9,6 @@ struct ArmariModule: GuastiModule {
     let isAvailable = true
 
     @MainActor func makeRootView() -> AnyView {
-        AnyView(ArmariView())
+        AnyView(ArmariHomeView())
     }
 }

@@ -1,5 +1,4 @@
 import SwiftUI
-import PhotosUI
 
 struct PecaDetailView: View {
     let pecaID: String
@@ -8,12 +7,11 @@ struct PecaDetailView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var editing = false
-    @State private var pickerItem: PhotosPickerItem?
-    @State private var showCamera = false
-    @State private var uploading = false
+    @State private var busy = false
     @State private var errorText: String?
     @State private var viewing: Foto?
-    @State private var page: String?
+    @State private var page = 0
+    @State private var confirmDelete = false
 
     var body: some View {
         if let peca = store.peca(pecaID) {
@@ -27,25 +25,9 @@ struct PecaDetailView: View {
         let fotos = store.photos(for: peca)
         return List {
             Section {
-                gallery(fotos)
+                gallery(fotos, cover: peca.portada)
                     .listRowInsets(EdgeInsets())
-                HStack {
-                    PhotosPicker(selection: $pickerItem, matching: .images) {
-                        Label("Galeria", systemImage: "photo.on.rectangle")
-                    }
-                    Spacer()
-                    if uploading {
-                        ProgressView()
-                        Spacer()
-                    }
-                    Button {
-                        showCamera = true
-                    } label: {
-                        Label("Càmera", systemImage: "camera")
-                    }
-                }
-                .buttonStyle(.borderless)
-                .disabled(uploading)
+                    .listRowBackground(Color.clear)
             }
 
             Section {
@@ -54,24 +36,26 @@ struct PecaDetailView: View {
                     .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
             }
 
-            Section {
-                if !peca.ubicacio.isEmpty {
-                    LabeledContent {
-                        Text(peca.ubicacio)
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(.primary)
-                    } label: {
-                        Label("Ubicació", systemImage: "mappin.and.ellipse")
+            if !peca.ubicacio.isEmpty || !peca.talla.isEmpty || !peca.marca.isEmpty || !peca.colors.isEmpty {
+                Section {
+                    if !peca.ubicacio.isEmpty {
+                        LabeledContent {
+                            Text(peca.ubicacio)
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(.primary)
+                        } label: {
+                            Label("Ubicació", systemImage: "mappin.and.ellipse")
+                        }
                     }
-                }
-                row("Talla", peca.talla)
-                row("Marca", peca.marca)
-                if !peca.colors.isEmpty {
-                    LabeledContent("Color") {
-                        HStack(spacing: 6) {
-                            ForEach(peca.colors, id: \.self) { c in
-                                ColorSwatch(name: c, size: 18)
-                                Text(c)
+                    row("Talla", peca.talla)
+                    row("Marca", peca.marca)
+                    if !peca.colors.isEmpty {
+                        LabeledContent("Color") {
+                            HStack(spacing: 6) {
+                                ForEach(peca.colors, id: \.self) { c in
+                                    ColorSwatch(name: c, size: 18)
+                                    Text(c)
+                                }
                             }
                         }
                     }
@@ -83,12 +67,30 @@ struct PecaDetailView: View {
                     Text(peca.notes)
                 }
             }
+
+            Section {
+                Button {
+                    editing = true
+                } label: {
+                    Label("Edita", systemImage: "pencil")
+                }
+                Button(role: .destructive) {
+                    confirmDelete = true
+                } label: {
+                    Label("Elimina", systemImage: "trash")
+                }
+            }
+            .disabled(busy)
         }
         .navigationTitle(peca.nom.isEmpty ? "Peça" : peca.nom)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Edita") { editing = true }
+                if busy {
+                    ProgressView()
+                } else {
+                    Button("Edita") { editing = true }
+                }
             }
         }
         .sheet(isPresented: $editing) {
@@ -98,21 +100,18 @@ struct PecaDetailView: View {
                 }
             }
         }
-        .fullScreenCover(isPresented: $showCamera) {
-            CameraPicker { image in upload(image, to: peca.id) }
-                .ignoresSafeArea()
+        .confirmationDialog("Vols eliminar «\(peca.nom)» i les seves fotos?", isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button("Elimina", role: .destructive) {
+                run {
+                    try await store.delete(peca)
+                    dismiss()
+                }
+            }
+        } message: {
+            Text("Les fotos aniran a la paperera de Drive.")
         }
         .fullScreenCover(item: $viewing) { foto in
             PhotoViewer(path: foto.path)
-        }
-        .onChange(of: pickerItem) { _, item in
-            guard let item else { return }
-            Task {
-                if let data = try? await item.loadTransferable(type: Data.self), let image = UIImage(data: data) {
-                    upload(image, to: peca.id)
-                }
-                pickerItem = nil
-            }
         }
         .alert("No s'ha pogut fer", isPresented: Binding(get: { errorText != nil }, set: { if !$0 { errorText = nil } })) {
             Button("D'acord", role: .cancel) {}
@@ -122,40 +121,70 @@ struct PecaDetailView: View {
     }
 
     @ViewBuilder
-    private func gallery(_ fotos: [Foto]) -> some View {
+    private func gallery(_ fotos: [Foto], cover: String) -> some View {
         if fotos.isEmpty {
-            DrivePhoto(path: "")
-                .frame(height: 260)
+            ZStack {
+                RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color(.secondarySystemFill))
+                Text("Sense fotos").foregroundStyle(.secondary)
+            }
+            .aspectRatio(4 / 3, contentMode: .fit)
         } else {
-            TabView(selection: $page) {
-                ForEach(fotos) { foto in
-                    DrivePhoto(path: foto.path, size: .medium, contentMode: .fit)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Color(.secondarySystemBackground))
-                        .tag(Optional(foto.id))
-                        .onTapGesture { viewing = foto }
-                        .contextMenu { photoActions(foto) }
+            VStack(spacing: 10) {
+                TabView(selection: $page) {
+                    ForEach(Array(fotos.enumerated()), id: \.element.id) { i, foto in
+                        DrivePhoto(path: foto.path, size: .medium)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .contentShape(Rectangle())
+                            .onTapGesture { viewing = foto }
+                            .overlay(alignment: .bottomLeading) { tag(foto, isCover: i == 0) }
+                            .padding(.horizontal, 2)
+                            .tag(i)
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .aspectRatio(3 / 4, contentMode: .fit)
+                if fotos.count > 1 {
+                    HStack(spacing: 6) {
+                        ForEach(fotos.indices, id: \.self) { i in
+                            Circle()
+                                .fill(i == page ? Color.primary : Color.secondary.opacity(0.35))
+                                .frame(width: 6, height: 6)
+                        }
+                    }
                 }
             }
-            .tabViewStyle(.page(indexDisplayMode: fotos.count > 1 ? .always : .never))
-            .frame(height: 440)
         }
     }
 
     @ViewBuilder
-    private func photoActions(_ foto: Foto) -> some View {
-        if !foto.id.hasPrefix("portada-") {
-            Button {
-                run { try await store.setCover(foto) }
-            } label: {
-                Label("Fes-la portada", systemImage: "star")
-            }
-            Button(role: .destructive) {
-                run { try await store.deletePhoto(foto) }
-            } label: {
-                Label("Elimina la foto", systemImage: "trash")
+    private func tag(_ foto: Foto, isCover: Bool) -> some View {
+        Group {
+            if isCover {
+                Text("Portada")
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.pink, in: Capsule())
+            } else if !foto.id.hasPrefix("portada-") {
+                Button {
+                    run {
+                        try await store.setCover(foto)
+                        page = 0
+                    }
+                } label: {
+                    Text("Fes-la portada")
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color.black.opacity(0.6), in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .disabled(busy)
             }
         }
+        .font(.caption)
+        .padding(12)
     }
 
     private func chips(_ peca: Peca) -> some View {
@@ -178,15 +207,10 @@ struct PecaDetailView: View {
         }
     }
 
-    private func upload(_ image: UIImage, to pecaID: String) {
-        guard let jpeg = ImageUtil.jpegForUpload(image) else { return }
-        run { try await store.addPhoto(jpeg, to: pecaID) }
-    }
-
     private func run(_ action: @escaping () async throws -> Void) {
         Task {
-            uploading = true
-            defer { uploading = false }
+            busy = true
+            defer { busy = false }
             do {
                 try await action()
             } catch {

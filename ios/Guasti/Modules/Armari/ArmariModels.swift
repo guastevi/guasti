@@ -141,6 +141,18 @@ enum ArmariCatalog {
         ("Lila", "9b6fc4"), ("Taronja", "ec7a1c"), ("Daurat", "c9a227"), ("Platejat", "c4c4c4"), ("Multicolor", "multi"),
     ]
 
+    /// Les peces del desplegable "Peça", en el mateix ordre que l'app web.
+    static let kinds = ["Americana", "Abric", "Jaqueta", "Armilla", "Jersei", "Rebeca", "Dessuadora", "Camisa", "Blusa",
+                        "Samarreta", "Top", "Vestit", "Faldilla", "Pantaló", "Texans", "Malles", "Sabates", "Botes",
+                        "Botins", "Sandàlies", "Bambes", "Bossa", "Fulard", "Cinturó", "Barret", "Mitjons", "Mitges",
+                        "Bragues", "Sostenidors", "Lligacames", "Body", "Combinació", "Pijama", "Banyador", "Llençols",
+                        "Funda de coixí", "Funda nòrdica", "Edredó", "Manta", "Tovallola", "Barnús", "Estovalles"]
+    /// Roba de casa: en triar-les, el tipus passa a "Casa".
+    static let home = ["Llençols", "Funda de coixí", "Funda nòrdica", "Edredó", "Manta", "Tovallola", "Barnús", "Estovalles"]
+    static let shoes = ["Sabates", "Botes", "Botins", "Sandàlies", "Bambes"]
+    /// Roba íntima: en triar-la, la peça es marca com a privada.
+    static let intimate = ["Mitges", "Bragues", "Sostenidors", "Lligacames", "Body", "Combinació"]
+
     /// Ordre "com un armari" de l'app web.
     static let ordre = ["Jersei", "Rebeca", "Dessuadora", "Armilla", "Americana", "Jaqueta", "Abric", "Camisa", "Blusa",
                         "Samarreta", "Top", "Body", "Vestit", "Faldilla", "Texans", "Pantaló", "Malles", "Sabates",
@@ -169,14 +181,15 @@ enum ArmariCatalog {
 }
 
 enum ArmariSort: String, CaseIterable, Identifiable {
-    case armari, nom, noves, ubicacio
+    case armari, nom, noves, ubicacio, peca
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .armari: return "Com un armari"
-        case .nom: return "Per nom (A-Z)"
-        case .noves: return "Últimes afegides"
-        case .ubicacio: return "Per ubicació"
+        case .armari: return "Ordena com un armari"
+        case .nom: return "Ordena per nom (A-Z)"
+        case .noves: return "Ordena per últimes afegides"
+        case .ubicacio: return "Ordena per ubicació"
+        case .peca: return "Ordena per tipus de peça (A-Z)"
         }
     }
 }
