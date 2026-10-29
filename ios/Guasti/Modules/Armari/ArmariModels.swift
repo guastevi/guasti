@@ -54,7 +54,7 @@ struct Peca: Codable, Identifiable, Hashable {
         ubicacio = s(.ubicacio)
         color = s(.color)
         notes = s(.notes)
-        portada = s(.portada)
+        portada = s(.portada).trimmingCharacters(in: .whitespacesAndNewlines)
         talla = s(.talla)
         marca = s(.marca)
         privada = s(.privada)
@@ -111,15 +111,11 @@ struct Foto: Codable, Identifiable, Hashable {
         func s(_ key: CodingKeys) -> String { (try? c.decodeIfPresent(String.self, forKey: key)) ?? "" }
         id = s(.id)
         peca = s(.peca)
-        path = s(.path)
+        path = s(.path).trimmingCharacters(in: .whitespacesAndNewlines)
         ordre = s(.ordre)
     }
 
     var order: Int { Int(Double(ordre) ?? 0) }
-}
-
-struct PecaRoute: Hashable {
-    let id: String
 }
 
 /// Les mateixes llistes que fa servir l'app web de l'Armari.

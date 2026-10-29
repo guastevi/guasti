@@ -49,9 +49,23 @@ struct PecaDetailView: View {
             }
 
             Section {
-                row("Tipus", peca.tipus.isEmpty ? "" : ArmariCatalog.tipusLabel(peca.tipus))
-                row("Temporada", peca.temporada)
-                row("Ubicació", peca.ubicacio)
+                chips(peca)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+            }
+
+            Section {
+                if !peca.ubicacio.isEmpty {
+                    LabeledContent {
+                        Text(peca.ubicacio)
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(.primary)
+                    } label: {
+                        Label("Ubicació", systemImage: "mappin.and.ellipse")
+                    }
+                }
+                row("Talla", peca.talla)
+                row("Marca", peca.marca)
                 if !peca.colors.isEmpty {
                     LabeledContent("Color") {
                         HStack(spacing: 6) {
@@ -61,11 +75,6 @@ struct PecaDetailView: View {
                             }
                         }
                     }
-                }
-                row("Talla", peca.talla)
-                row("Marca", peca.marca)
-                if peca.isPrivate {
-                    LabeledContent("Privada") { Image(systemName: "lock.fill") }
                 }
             }
 
@@ -145,6 +154,19 @@ struct PecaDetailView: View {
                 run { try await store.deletePhoto(foto) }
             } label: {
                 Label("Elimina la foto", systemImage: "trash")
+            }
+        }
+    }
+
+    private func chips(_ peca: Peca) -> some View {
+        HStack(spacing: 6) {
+            ForEach([peca.tipus.isEmpty ? "" : ArmariCatalog.tipusLabel(peca.tipus), peca.temporada,
+                     peca.isPrivate ? "Privada" : ""].filter { !$0.isEmpty }, id: \.self) { chip in
+                Text(chip)
+                    .font(.subheadline)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color(.secondarySystemFill), in: Capsule())
             }
         }
     }

@@ -55,7 +55,7 @@ final class ArmariStore: ObservableObject {
 
     /// Fotos d'una peça, amb la portada primer.
     func photos(for peca: Peca) -> [Foto] {
-        var list = fotos.filter { $0.peca == peca.id }.sorted { $0.order < $1.order }
+        var list = fotos.filter { $0.peca == peca.id && !$0.path.isEmpty }.sorted { $0.order < $1.order }
         if !peca.portada.isEmpty {
             if let i = list.firstIndex(where: { $0.path == peca.portada }) {
                 list.insert(list.remove(at: i), at: 0)
@@ -148,7 +148,7 @@ final class ArmariStore: ObservableObject {
 
     /// Baixa la portada de totes les peces per poder-les veure sense connexió.
     func downloadAllCovers() async {
-        let paths = peces.map(\.portada).filter { !$0.isEmpty }
+        let paths = peces.compactMap { photos(for: $0).first?.path }
         downloadProgress = (0, paths.count)
         await withTaskGroup(of: Void.self) { group in
             for path in paths {

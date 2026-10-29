@@ -203,6 +203,7 @@ function driveThumbnail_(fileId, width) {
 
 /** Converteix "fotos_Images/xxx.jpg" en l'ID del fitxer de Drive. */
 function resolvePhoto_(path) {
+  path = String(path || '').trim();
   if (!path) return null;
   const cache = CacheService.getScriptCache();
   const hit = cache.get('p:' + path);
@@ -216,7 +217,8 @@ function resolvePhoto_(path) {
       return file.getId();
     }
   }
-  return null;
+  const m = path.match(/[-\w]{25,}/); // URL o ID de Drive, com fa l'app web
+  return m ? m[0] : null;
 }
 
 /** La carpeta on hi ha les fotos existents; les noves hi van a parar també. */

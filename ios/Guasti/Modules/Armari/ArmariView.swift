@@ -71,8 +71,10 @@ struct ArmariView: View {
             }
             LazyVGrid(columns: columns, spacing: 16) {
                 ForEach(filtered) { peca in
-                    NavigationLink(value: PecaRoute(id: peca.id)) {
-                        PecaCell(peca: peca)
+                    NavigationLink {
+                        PecaDetailView(pecaID: peca.id)
+                    } label: {
+                        PecaCell(peca: peca, fotos: store.photos(for: peca))
                     }
                     .buttonStyle(.plain)
                 }
@@ -88,9 +90,6 @@ struct ArmariView: View {
         }
         .overlay { emptyState }
         .navigationTitle("Armari")
-        .navigationDestination(for: PecaRoute.self) { route in
-            PecaDetailView(pecaID: route.id)
-        }
         .searchable(text: $search, prompt: "Cerca nom, marca, notes…")
         .refreshable { await store.refresh() }
         .task { await store.refreshIfNeeded() }
@@ -250,30 +249,64 @@ struct ArmariView: View {
 
 struct PecaCell: View {
     let peca: Peca
+    let fotos: [Foto]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             Color.clear
                 .aspectRatio(3 / 4, contentMode: .fit)
-                .overlay(DrivePhoto(path: peca.portada, size: .thumb))
+                .overlay(PhotoStrip(fotos: fotos))
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay(alignment: .topTrailing) {
+                .overlay(alignment: .topLeading) {
                     if peca.isPrivate {
-                        Image(systemName: "lock.fill")
-                            .font(.caption2)
-                            .padding(5)
-                            .background(.ultraThinMaterial, in: Circle())
+                        Text("Privada")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(Color.pink, in: Capsule())
                             .padding(6)
                     }
                 }
             Text(peca.nom.isEmpty ? "Sense nom" : peca.nom)
                 .font(.subheadline.weight(.medium))
-                .lineLimit(1)
-            Text([peca.talla, peca.marca].filter { !$0.isEmpty }.joined(separator: " · "))
+                .lineLimit(2)
+            Text([peca.talla.isEmpty ? "" : "Talla \(peca.talla)", peca.ubicacio].filter { !$0.isEmpty }.joined(separator: " · "))
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
         .contentShape(Rectangle())
+    }
+}
+
+/// Les fotos d'una peça a la graella: es passen lliscant (davant, darrere…), amb puntets a sota.
+struct PhotoStrip: View {
+    let fotos: [Foto]
+    @State private var index = 0
+
+    var body: some View {
+        if fotos.count < 2 {
+            DrivePhoto(path: fotos.first?.path ?? "", size: .thumb)
+        } else {
+            TabView(selection: $index) {
+                ForEach(Array(fotos.enumerated()), id: \.element.id) { i, foto in
+                    DrivePhoto(path: foto.path, size: .thumb)
+                        .tag(i)
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .overlay(alignment: .bottom) {
+                HStack(spacing: 4) {
+                    ForEach(fotos.indices, id: \.self) { i in
+                        Circle()
+                            .fill(i == index ? Color.pink : Color.black.opacity(0.25))
+                            .frame(width: 5, height: 5)
+                    }
+                }
+                .padding(.bottom, 7)
+                .allowsHitTesting(false)
+            }
+        }
     }
 }
