@@ -340,6 +340,26 @@ final class PartituresStore: ObservableObject {
         return data
     }
 
+    /// Després d'editar les pàgines: el PDF nou queda al mòbil i la portada es torna a demanar.
+    func replacePdf(old: String, new: String, data: Data) {
+        try? data.write(to: cacheDir.appendingPathComponent(new + ".pdf"), options: .atomic)
+        if old != new { try? fm.removeItem(at: cacheDir.appendingPathComponent(old + ".pdf")) }
+        if offline.contains(old) {
+            try? data.write(to: offlineDir.appendingPathComponent(new + ".pdf"), options: .atomic)
+            if old != new {
+                try? fm.removeItem(at: offlineDir.appendingPathComponent(old + ".pdf"))
+                offline.remove(old)
+                offline.insert(new)
+            }
+        }
+        for id in [old, new] {
+            thumbs[id] = nil
+            noThumb.remove(id)
+            asked.remove(id)
+            try? fm.removeItem(at: cacheDir.appendingPathComponent("th_" + id))
+        }
+    }
+
     func hasLocalPdf(_ fid: String) -> Bool {
         fm.fileExists(atPath: offlineDir.appendingPathComponent(fid + ".pdf").path) ||
             fm.fileExists(atPath: cacheDir.appendingPathComponent(fid + ".pdf").path)

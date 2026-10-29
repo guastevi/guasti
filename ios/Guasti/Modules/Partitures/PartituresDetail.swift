@@ -83,6 +83,7 @@ struct PDetailView: View {
                 Button("Comparteix") { withAnimation { showShare.toggle() } }.buttonStyle(PBtn(kind: .primary))
                 if Arxiu.isPdf(r) {
                     Button("Anota") { req = .stand([r], title(r), draw: true) }.buttonStyle(PBtn())
+                    NavigationLink { PPagesView(doc: r) } label: { Text("Pàgines") }.buttonStyle(PBtn())
                 }
                 if let url = URL(string: u) { Button("Obre al Drive") { openURL(url) }.buttonStyle(PBtn()) }
                 edit.buttonStyle(PBtn())
