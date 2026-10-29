@@ -56,9 +56,9 @@ private struct ModuleTile: View {
                 .font(.system(size: 30, weight: .semibold))
             Spacer(minLength: 0)
             Text(module.title)
-                .font(.title3.weight(.semibold))
+                .font(Theme.display(22))
             Text(module.subtitle)
-                .font(.footnote)
+                .font(Theme.body(13, relativeTo: .footnote))
                 .opacity(0.85)
         }
         .foregroundStyle(.white)

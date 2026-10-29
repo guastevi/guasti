@@ -25,8 +25,8 @@ struct ArmariHomeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 VStack(alignment: .leading, spacing: 4) {
-                    (Text("Armari\n") + Text("Guasteví").foregroundColor(.pink))
-                        .font(.system(size: 40, weight: .bold, design: .serif))
+                    (Text("Armari\n") + Text("Guasteví").foregroundColor(Theme.tint))
+                        .font(Theme.display(44))
                     Text(countText)
                         .foregroundStyle(store.errorMessage != nil && store.peces.isEmpty ? .red : .secondary)
                 }
@@ -89,15 +89,15 @@ struct ArmariHomeView: View {
                 .background(primary ? Color.white.opacity(0.16) : Color.gray.opacity(0.14),
                             in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.headline)
-                Text(subtitle).font(.subheadline).opacity(0.8)
+                Text(title).font(Theme.body(17, weight: .semibold, relativeTo: .headline))
+                Text(subtitle).font(Theme.body(15, relativeTo: .subheadline)).opacity(0.8)
             }
             Spacer(minLength: 0)
         }
         .foregroundStyle(primary ? Color.white : Color.primary)
         .padding(.horizontal, 20)
         .padding(.vertical, 22)
-        .background(primary ? Color.pink : Color(.secondarySystemBackground),
+        .background(primary ? Theme.accent : Color(.secondarySystemBackground),
                     in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .contentShape(Rectangle())
     }
@@ -234,7 +234,7 @@ struct ArmariView: View {
 
             HStack {
                 Text(store.peces.isEmpty ? "" : "\(filtered.count) de \(visible.count) peces")
-                    .font(.footnote)
+                    .font(Theme.body(13, relativeTo: .footnote))
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
                 Spacer()
@@ -264,7 +264,7 @@ struct ArmariView: View {
                     .font(.title2.weight(.semibold))
                     .foregroundStyle(.white)
                     .frame(width: 58, height: 58)
-                    .background(Color.pink, in: Circle())
+                    .background(Theme.accent, in: Circle())
                     .shadow(color: .black.opacity(0.25), radius: 12, y: 6)
             }
             .padding(18)
@@ -282,7 +282,7 @@ struct ArmariView: View {
                 } label: {
                     Image(systemName: showPrivate ? "lock.open.fill" : "lock.fill")
                 }
-                .tint(showPrivate ? .pink : nil)
+                .tint(showPrivate ? Theme.tint : nil)
                 .accessibilityLabel(showPrivate ? "Amaga l'apartat privat" : "Mostra l'apartat privat")
                 Menu {
                     Button {
@@ -305,7 +305,7 @@ struct ArmariView: View {
             if let progress = store.downloadProgress {
                 ProgressView(value: Double(progress.done), total: Double(max(progress.total, 1))) {
                     Text("Baixant fotos \(progress.done) de \(progress.total)")
-                        .font(.footnote)
+                        .font(Theme.body(13, relativeTo: .footnote))
                 }
                 .padding()
                 .background(.bar)
@@ -320,9 +320,9 @@ struct ArmariView: View {
             HStack {
                 Text(title).lineLimit(1)
                 Spacer(minLength: 4)
-                Image(systemName: "chevron.up.chevron.down").font(.caption)
+                Image(systemName: "chevron.up.chevron.down").font(Theme.body(12, relativeTo: .caption))
             }
-            .font(.subheadline)
+            .font(Theme.body(15, relativeTo: .subheadline))
             .foregroundStyle(.primary)
             .padding(.horizontal, 14)
             .padding(.vertical, 11)
@@ -340,14 +340,14 @@ struct ArmariView: View {
                     } label: {
                         ColorSwatch(name: c, size: 30)
                             .padding(2)
-                            .overlay(RoundedRectangle(cornerRadius: 11).strokeBorder(color == c ? Color.pink : .clear, lineWidth: 2))
+                            .overlay(RoundedRectangle(cornerRadius: 11).strokeBorder(color == c ? Theme.accent : .clear, lineWidth: 2))
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(c)
                 }
                 if color != nil {
                     Button("Tots els colors") { color = nil }
-                        .font(.footnote)
+                        .font(Theme.body(13, relativeTo: .footnote))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
                         .background(Color(.secondarySystemFill), in: Capsule())
@@ -432,15 +432,15 @@ struct PecaCell: View {
                             .foregroundStyle(.white)
                             .padding(.horizontal, 7)
                             .padding(.vertical, 3)
-                            .background(Color.pink, in: Capsule())
+                            .background(Theme.accent, in: Capsule())
                             .padding(6)
                     }
                 }
             Text(peca.nom.isEmpty ? "Sense nom" : peca.nom)
-                .font(.subheadline.weight(.medium))
+                .font(Theme.body(15, weight: .semibold, relativeTo: .subheadline))
                 .lineLimit(2)
             Text([peca.talla.isEmpty ? "" : "Talla \(peca.talla)", peca.ubicacio].filter { !$0.isEmpty }.joined(separator: " · "))
-                .font(.caption)
+                .font(Theme.body(12, relativeTo: .caption))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
@@ -468,7 +468,7 @@ struct PhotoStrip: View {
                 HStack(spacing: 4) {
                     ForEach(fotos.indices, id: \.self) { i in
                         Circle()
-                            .fill(i == index ? Color.pink : Color.black.opacity(0.25))
+                            .fill(i == index ? Theme.accent : Color.black.opacity(0.25))
                             .frame(width: 5, height: 5)
                     }
                 }

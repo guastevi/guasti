@@ -41,7 +41,7 @@ struct PecaDetailView: View {
                     if !peca.ubicacio.isEmpty {
                         LabeledContent {
                             Text(peca.ubicacio)
-                                .font(.body.weight(.semibold))
+                                .font(Theme.body(17, weight: .semibold))
                                 .foregroundStyle(.primary)
                         } label: {
                             Label("Ubicació", systemImage: "mappin.and.ellipse")
@@ -165,7 +165,7 @@ struct PecaDetailView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background(Color.pink, in: Capsule())
+                    .background(Theme.accent, in: Capsule())
             } else if !foto.id.hasPrefix("portada-") {
                 Button {
                     run {
@@ -183,7 +183,7 @@ struct PecaDetailView: View {
                 .disabled(busy)
             }
         }
-        .font(.caption)
+        .font(Theme.body(12, relativeTo: .caption))
         .padding(12)
     }
 
@@ -192,7 +192,7 @@ struct PecaDetailView: View {
             ForEach([peca.tipus.isEmpty ? "" : ArmariCatalog.tipusLabel(peca.tipus), peca.temporada,
                      peca.isPrivate ? "Privada" : ""].filter { !$0.isEmpty }, id: \.self) { chip in
                 Text(chip)
-                    .font(.subheadline)
+                    .font(Theme.body(15, relativeTo: .subheadline))
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
                     .background(Color(.secondarySystemFill), in: Capsule())

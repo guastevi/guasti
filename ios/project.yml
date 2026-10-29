@@ -27,6 +27,12 @@ targets:
         NSCameraUsageDescription: Per fer fotos de les peces de l'armari.
         NSFaceIDUsageDescription: Per mostrar les peces privades.
         ITSAppUsesNonExemptEncryption: false
+        UIAppFonts:
+          - BricolageGrotesque-Bold.ttf
+          - BricolageGrotesque-BoldSmall.ttf
+          - Figtree-Regular.ttf
+          - Figtree-Medium.ttf
+          - Figtree-SemiBold.ttf
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: cat.guasti.app

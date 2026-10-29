@@ -92,7 +92,7 @@ struct PecaEditView: View {
                                     }
                                 }
                                 .padding(2)
-                                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(on ? Color.pink : .clear, lineWidth: 2))
+                                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(on ? Theme.accent : .clear, lineWidth: 2))
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel(c.name)
@@ -126,7 +126,7 @@ struct PecaEditView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Peça privada")
                         Text("No surt a la galeria ni a la cerca si no obres l'apartat privat")
-                            .font(.footnote)
+                            .font(Theme.body(13, relativeTo: .footnote))
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -145,7 +145,7 @@ struct PecaEditView: View {
                         Spacer()
                         if saving { ProgressView().padding(.trailing, 6) }
                         Text(saving ? (status ?? "Desant…") : (isNew ? "Desa la peça" : "Desa els canvis"))
-                            .font(.headline)
+                            .font(Theme.body(17, weight: .semibold, relativeTo: .headline))
                         Spacer()
                     }
                 }
@@ -203,7 +203,7 @@ struct PecaEditView: View {
                     } label: {
                         VStack(spacing: 6) {
                             Image(systemName: "plus").font(.title3)
-                            Text("Afegeix fotos").font(.caption)
+                            Text("Afegeix fotos").font(Theme.body(12, relativeTo: .caption))
                         }
                         .foregroundStyle(.secondary)
                         .frame(width: 96, height: 128)
@@ -252,7 +252,7 @@ struct PecaEditView: View {
                         .foregroundStyle(.white)
                         .padding(.horizontal, 7)
                         .padding(.vertical, 2)
-                        .background(Color.pink, in: Capsule())
+                        .background(Theme.accent, in: Capsule())
                 }
                 Spacer(minLength: 0)
                 if items.count > 1 {
@@ -318,12 +318,12 @@ struct PecaEditView: View {
     private func pill(_ title: String, on: Bool, dashed: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.subheadline)
-                .foregroundStyle(on ? Color.white : (dashed ? Color.pink : Color.primary))
+                .font(Theme.body(15, relativeTo: .subheadline))
+                .foregroundStyle(on ? Color.white : (dashed ? Theme.tint : Color.primary))
                 .padding(.horizontal, 14)
                 .padding(.vertical, 9)
-                .background(on ? Color.pink : Color.clear, in: Capsule())
-                .overlay(Capsule().strokeBorder(on ? Color.pink : Color.gray.opacity(0.4),
+                .background(on ? Theme.accent : Color.clear, in: Capsule())
+                .overlay(Capsule().strokeBorder(on ? Theme.accent : Color.gray.opacity(0.4),
                                                 style: StrokeStyle(lineWidth: 1, dash: dashed ? [4] : [])))
         }
         .buttonStyle(.plain)
@@ -473,7 +473,7 @@ struct SuggestField: View {
                     }
                 } label: {
                     Image(systemName: "chevron.up.chevron.down")
-                        .font(.footnote)
+                        .font(Theme.body(13, relativeTo: .footnote))
                 }
             }
         }

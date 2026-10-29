@@ -39,7 +39,7 @@ struct SetupView: View {
 
                 if let result {
                     Text(result)
-                        .font(.footnote)
+                        .font(Theme.body(13, relativeTo: .footnote))
                         .foregroundStyle(.secondary)
                 }
             }

@@ -5,7 +5,7 @@ struct ArmariModule: GuastiModule {
     let title = "Armari"
     let subtitle = "La teva roba"
     let systemImage = "tshirt.fill"
-    let tint = Color.pink
+    let tint = Theme.accent
     let isAvailable = true
 
     @MainActor func makeRootView() -> AnyView {
