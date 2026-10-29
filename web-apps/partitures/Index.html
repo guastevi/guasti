@@ -1,0 +1,2044 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<style>
+:root{
+  --paper:#ffffff; --card:#ffffff; --ink:#111111; --mute:#6e6e73; --line:#e2e2e2;
+  --accent:#111111; --on-accent:#ffffff; --blue:#2AABEE; --blue-ink:#1683c9;
+  --accent-soft:#e8f5fd; --chip:#f2f2f2;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --paper:#000000; --card:#121212; --ink:#f5f5f5; --mute:#9a9a9a; --line:#2c2c2c;
+         --accent:#f5f5f5; --on-accent:#000000; --blue:#2AABEE; --blue-ink:#5cc0f2;
+         --accent-soft:#0c2a3b; --chip:#1e1e1e; }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);
+  font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+header{position:sticky;top:0;z-index:5;background:var(--paper);padding:14px 16px 0;border-bottom:1px solid var(--line)}
+h1{font-size:22px;font-weight:700;line-height:1.2;margin:0 0 10px;letter-spacing:-.2px;display:flex;align-items:center}
+.rl{margin-left:auto;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:18px;padding:5px 12px;font:inherit;font-size:13px;font-weight:500;cursor:pointer}
+.rl.busy svg{animation:ringspin .8s linear infinite}
+@media (max-width:420px){.rl span{display:none}.rl{padding:6px}}
+nav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{border:0;background:none;color:var(--mute);padding:8px 10px 10px;font:inherit;font-weight:500;
+  border-bottom:2px solid transparent;white-space:nowrap;cursor:pointer}
+nav button.on{color:var(--ink);border-bottom-color:var(--blue)}
+main{padding:12px 16px 110px;max-width:760px;margin:0 auto}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.tools input[type=search]{flex:1 1 100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;
+  background:var(--card);color:var(--ink);font:inherit}
+.tools select{flex:1 1 30%;min-width:0;padding:8px;border:1px solid var(--line);border-radius:10px;
+  background:var(--card);color:var(--ink);font:inherit;font-size:14px}
+.count{color:var(--mute);font-size:13px;margin:4px 2px 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer}
+.card .t{font-weight:600}
+.card .s{color:var(--mute);font-size:13px;margin-top:2px}
+.tag{display:inline-block;background:var(--chip);border-radius:6px;padding:1px 7px;font-size:12px;margin:6px 4px 0 0;color:var(--ink)}
+.tag.a{background:var(--accent-soft);color:var(--blue-ink)}
+.group{font-size:15px;font-weight:700;margin:18px 2px 8px;color:var(--ink)}
+.empty{color:var(--mute);text-align:center;padding:40px 10px}
+.fab{position:fixed;right:18px;bottom:calc(22px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:50%;
+  border:0;background:var(--accent);color:var(--on-accent);font-size:30px;line-height:56px;box-shadow:0 4px 14px rgba(0,0,0,.25);cursor:pointer}
+#panel{position:fixed;inset:0;background:var(--paper);z-index:10;overflow-y:auto;display:none}
+#panel.open{display:block}
+.ph{position:sticky;top:0;background:var(--paper);display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.ph h2{flex:1;font-size:18px;font-weight:700;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pb{padding:14px 16px 60px;max-width:760px;margin:0 auto}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:8px 12px;font:inherit;cursor:pointer}
+.btn.p{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.d{color:#b3261e}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+dl{margin:0}
+dt{color:var(--mute);font-size:12px;margin-top:10px}
+dd{margin:0;word-break:break-word}
+label{display:block;color:var(--mute);font-size:13px;margin:12px 0 4px}
+.f input,.f select,.f textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;
+  background:var(--card);color:var(--ink);font:inherit}
+.f textarea{min-height:80px}
+.f .chk{display:flex;align-items:center;gap:8px;margin-top:12px;color:var(--ink)}
+.f .chk input{width:auto}
+h3{font-size:15px;font-weight:700;margin:22px 0 8px}
+.doc{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);margin-bottom:6px}
+.doc a{color:var(--ink);text-decoration:none;flex:1;font-weight:500}
+.doc .fmt{font-size:11px;color:var(--mute);border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+a{color:var(--blue-ink)}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:var(--paper);
+  padding:8px 14px;border-radius:8px;font-size:14px;display:none;z-index:20;max-width:90%}
+.loading{color:var(--mute);text-align:center;padding:60px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
+.gi{cursor:pointer}
+.gi .t{font-size:13px;font-weight:600;margin-top:6px;line-height:1.3;text-align:center;word-break:break-word;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.gi .s{font-size:12px;color:var(--mute);text-align:center}
+.pv{border:1px solid var(--line);border-radius:10px;background:#fff;margin-top:12px;overflow:hidden;cursor:pointer;min-height:120px}
+@media (max-width:520px){ .grid{grid-template-columns:repeat(3,1fr);gap:10px} .gi .t{font-size:12px} }
+.cover{position:relative;aspect-ratio:3/4;background:var(--chip);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.cover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top;background:#fff}
+.cover .cph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;
+  padding:8px;font-size:12px;font-weight:600;line-height:1.25;color:var(--mute);word-break:break-word;overflow:hidden}
+.cover img:not([src]){display:none}
+.cover .cfmt{position:absolute;right:6px;bottom:6px;font-size:10px;background:var(--card);border-radius:4px;padding:1px 5px;color:var(--mute)}
+.card.wt{display:flex;gap:12px;align-items:flex-start}
+.card.wt .cover{flex:0 0 54px;aspect-ratio:3/4}
+.card.wt .cover .cph{font-size:9px;padding:3px}
+.card.wt .body{flex:1;min-width:0}
+.doc .cover{flex:0 0 40px}
+.doc .cover .cph{font-size:8px;padding:2px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:8px 14px;
+  font:inherit;font-size:14px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.chip.add{border-style:dashed;color:var(--mute)}
+.addbox{display:flex;gap:6px;flex:1 1 100%}
+.addbox input{flex:1;padding:8px 12px!important;border-radius:999px!important}
+.hint{font-size:12px;color:var(--mute);margin:-2px 0 6px}
+.sect{margin-top:26px;padding-top:6px;border-top:1px solid var(--line)}
+.filebox{border:1.5px dashed var(--line);border-radius:12px;padding:14px;text-align:center;color:var(--mute);margin-top:10px}
+.filebox input{width:100%;margin-top:8px}
+.fld[hidden]{display:none}
+.catbar{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -16px 10px;padding:0 16px}
+.catbar::-webkit-scrollbar{display:none}
+.catbar .chip{white-space:nowrap;flex:0 0 auto}
+.cursos{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.cursos > .chip{align-self:flex-start}
+.cgrp{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.cgl{font-size:12px;color:var(--mute);width:76px;flex:0 0 76px}
+.cgrp .chip{padding:6px 9px;font-size:13px;min-width:36px}
+.gc{font-weight:400;color:var(--mute);font-size:13px}
+.catbar.sub .chip{font-size:13px;padding:6px 12px}
+.share{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:6px 0 12px}
+.share h3{margin:0 0 8px}
+.srow{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.srow a.btn{text-decoration:none;color:var(--ink)}
+.rv .btn{padding:6px 12px}
+.edprev{margin-bottom:6px}
+.edprev summary{color:var(--mute);font-size:13px;cursor:pointer}
+.edprev .viewer{height:30vh;max-height:260px;margin-top:8px}
+.edprev .pv{position:relative;max-height:230px;min-height:0;margin-top:8px}
+.edprev .pv.wide{max-height:440px;overflow:auto}
+.edprev .pv canvas + .hint{position:absolute;left:0;right:0;bottom:0;background:rgba(255,255,255,.92);color:#555;font-size:12px;padding:4px 10px!important}
+@media (min-width:700px){.edprev .pv{max-height:300px}}
+.pg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px;padding-bottom:120px}
+.pg{position:relative;border:2px solid transparent;border-radius:8px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.pg.on{border-color:var(--blue)}
+.pg .pc{aspect-ratio:3/4;background:#fff;border:1px solid var(--line);border-radius:6px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.pg canvas{max-width:100%;max-height:100%;transition:transform .15s}
+.pg .pn{font-size:12px;color:var(--mute);text-align:center;margin-top:3px}
+.pg.new .pn{color:var(--blue-ink)}
+.pgbar{position:fixed;left:0;right:0;bottom:0;background:var(--paper);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+  display:flex;gap:8px;flex-wrap:wrap;align-items:center;z-index:12}
+.pgbar .btn{padding:8px 11px}
+.pgbar .btn:disabled{opacity:.4}
+.pgbar .sel{font-size:13px;color:var(--mute);flex:1 1 100%}
+.pick{max-height:50vh;overflow-y:auto;border:1px solid var(--line);border-radius:10px;margin-top:8px}
+.pick div{padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer}
+.seg{display:flex;background:var(--chip);border-radius:10px;padding:3px;gap:2px;margin-bottom:10px}
+.seg button{flex:1;border:0;background:none;color:var(--ink);font:inherit;font-size:13px;padding:7px 4px;border-radius:8px;cursor:pointer;white-space:nowrap}
+.seg button span{color:var(--mute);font-size:12px}
+.seg button.on{background:var(--card);box-shadow:0 1px 3px rgba(0,0,0,.15);font-weight:600}
+.dropz{border:2px dashed var(--line);border-radius:12px;padding:16px;text-align:center;color:var(--mute);font-size:14px;margin-bottom:8px}
+.dropz.on{border-color:var(--blue);background:var(--chip)}
+.dropz .btn{margin-top:8px}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:6px}
+.tile{border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;background:var(--card)}
+.tile b{display:block;font-size:22px;line-height:1.1}
+.tile span{font-size:13px;color:var(--mute)}
+.tile[data-go="pend"] b{color:var(--blue-ink)}
+.strip{display:grid;grid-auto-flow:column;grid-auto-columns:120px;gap:10px;overflow-x:auto;margin:0 -16px;padding:0 16px 6px;scrollbar-width:none}
+.strip::-webkit-scrollbar{display:none}
+.strip .gi .t{font-size:12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.count{display:flex;align-items:center;gap:8px}
+.vt{margin-left:auto;display:inline-flex;background:var(--chip);border-radius:8px;padding:2px}
+.vt button{border:0;background:none;font:inherit;font-size:12px;color:var(--mute);padding:4px 10px;border-radius:6px;cursor:pointer}
+.vt button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.15)}
+.lst{border-top:1px solid var(--line)}
+.lrow{display:flex;gap:10px;align-items:center;padding:6px 2px;border:0;border-bottom:1px solid var(--line);border-radius:0;margin:0;background:none;cursor:pointer}
+.lrow .cover{flex:0 0 34px;aspect-ratio:3/4}
+.lrow .cover .cph{font-size:7px;padding:1px}
+.lrow .cfmt{display:none}
+.lrow .body{flex:1;min-width:0}
+.lrow .t{font-weight:500;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lrow .s{font-size:12px;color:var(--mute);margin-top:1px}
+.mh{font-size:13px;font-weight:600;color:var(--mute);text-transform:uppercase;letter-spacing:.4px;margin:12px 2px 6px}
+.cc{border:1px solid var(--line);border-radius:10px;padding:8px 10px 8px 12px;margin-bottom:6px;background:var(--card);display:flex;gap:12px;align-items:center}
+.cch{cursor:pointer;flex:1 1 0;min-width:0}
+.ccoff{flex:0 0 auto;padding:3px 8px;font-size:11px;align-self:flex-start}
+.ccd{font-size:12px;font-weight:600;color:var(--blue-ink)}
+.cc .t{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cc .s{font-size:12px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ccstrip{display:flex;gap:6px;overflow-x:auto;flex:0 0 auto;max-width:55%;scrollbar-width:none;padding:1px}
+.ccstrip::-webkit-scrollbar{display:none}
+.ccstrip .gi{flex:0 0 44px;cursor:pointer}
+.ccstrip .cover{border-radius:4px}
+.ccstrip .cph{font-size:6px;padding:2px}
+.ccstrip .cfmt{display:none}
+.ccnone{font-size:12px;color:var(--mute);flex:0 1 auto;max-width:45%}
+@media (max-width:600px){.cc{flex-wrap:wrap;row-gap:6px}.ccstrip{order:3;flex-basis:100%;max-width:100%}.ccnone{order:3;flex-basis:100%;max-width:100%}}
+#stand{position:fixed;inset:0;background:#000;z-index:40;display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:pan-y pinch-zoom;-webkit-user-select:none;user-select:none}
+#stwrap{position:relative;line-height:0}
+#stand #stc{background:#fff;display:block}
+#stand #sto{position:absolute;left:0;top:0;pointer-events:none}
+#stand.drawing #sto{pointer-events:auto;touch-action:none;cursor:crosshair}
+#stand.drawing{align-items:flex-start;padding-top:56px}
+#stand .sttools{position:absolute;left:0;right:0;bottom:0;display:none;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:rgba(0,0,0,.85)}
+#stand.drawing .sttools{display:flex}
+#stand .sttools .btn{padding:6px 10px;font-size:13px}
+#stand .sttools .btn.on{background:var(--blue);border-color:var(--blue);color:#fff}
+#stand .sw{width:28px;height:28px;border-radius:50%;border:2px solid #555;cursor:pointer}
+#stand .sw.on{border-color:#fff;box-shadow:0 0 0 2px var(--blue)}
+#stand .stbar .btn{padding:6px 10px;font-size:13px}
+#stand .stmsg{position:absolute;top:50%;transform:translateY(-50%);left:0;right:0;text-align:center;color:#aaa;font-size:14px}
+.ring{display:flex;flex-direction:column;align-items:center;gap:14px;padding:10px}
+.ring svg{width:76px;height:76px;animation:ringspin 1.2s linear infinite}
+.ring circle{fill:none;stroke-width:5.5}
+.ring .trk{stroke:rgba(255,255,255,.14)}
+.ring .arc{stroke:#e53935;stroke-linecap:round;transition:stroke-dashoffset .25s ease}
+.ring .lbl{color:#aaa;font-size:14px;max-width:85%;text-align:center;overflow:hidden;text-overflow:ellipsis}
+.pv .ring .trk{stroke:rgba(0,0,0,.08)}
+.pv .ring .lbl{color:#777;font-size:13px}
+@keyframes ringspin{to{transform:rotate(360deg)}}
+#stand .stbar{position:absolute;left:0;right:0;top:0;display:flex;gap:8px;align-items:center;padding:10px 12px calc(10px);padding-top:calc(10px + env(safe-area-inset-top));
+  background:rgba(0,0,0,.78);color:#fff;transform:translateY(-110%);transition:transform .2s}
+#stand.bar .stbar{transform:none}
+#stand .stbar select{flex:1;min-width:0;padding:7px;border-radius:8px;border:0;font:inherit;font-size:14px}
+#stand .stbar span{font-size:13px;white-space:nowrap}
+.viewer{width:100%;height:72vh;border:1px solid var(--line);border-radius:10px;background:#fff;margin-top:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Arxiu de Repertori<button id="reload" class="rl" title="Actualitza" aria-label="Actualitza"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span>Actualitza</span></button></h1>
+  <nav id="tabs"></nav>
+</header>
+<main id="main"><div class="loading">Carregant l'arxiu...</div></main>
+<button class="fab" id="fab" aria-label="Afegeix">+</button>
+<div id="panel"></div>
+<div id="toast"></div>
+
+<script>
+var D = null;
+var S = { tab: 'Inici', q: '', f: {} };
+try { S.view = localStorage.getItem('arxiu.view') || 'grid'; } catch (e) { S.view = 'grid'; }
+function setView(v){ S.view = v; try { localStorage.setItem('arxiu.view', v); } catch (e) {} }
+
+var TABS = [
+  ['Inici', 'Inici'], ['Obres', 'Obres'], ['Compositors', 'Compositors'], ['Cursos', 'Pedagògic'], ['Documents', 'Documents'],
+  ['Concerts', 'Concerts'], ['Fagotades', 'Fagotades'], ['Agrupacions', 'Agrupacions'], ['Directors', 'Directors']
+];
+
+var SCHEMA = {
+  Obres: [['Categoria','chips','L:Categoria'],['Formació','chips','F:'],
+    ['Obra','text'],['Compositor','text'],
+    ['Àmbit','chips','L:Àmbit'],
+    ['Instrument','chips','L:Instrument'],
+    ['Etiquetes','multi','L:Etiquetes'],
+    ['Agrupació','chips','S:Agrupacions',"Àmbit=|Concert|Fagotada|Prova / audició|Estudi personal"],
+    ['Director/a','chips','S:Directors',"Àmbit=|Concert|Fagotada"],
+    ['Concert','ref','Concerts',"Àmbit=Concert"],
+    ['Fagotada','chips','S:Fagotades',"Àmbit=Fagotada"],
+    ['Curs','multi','L:Curs',"Àmbit=Pedagògic|Prova / audició|Estudi personal;Etiquetes~Vila-seca|EMMCA"],
+    ['Centre','chips','L:Centre',"Àmbit=Pedagògic;Etiquetes~Vila-seca"],
+    ['Any aproximat','number'],['Durada (min)','number'],
+    ['Fragment orquestral','check'],['Gravació','url'],['Notes','area'],
+    ['__files','files','Particel·la']],
+  Documents: [['T\u00edtol','text'],['Compositor','comp'],['Instrument','multi','L:Instrument'],['Llibre','book'],['Categoria','chips','L:Categoria'],['Formació','chips','F:'],['Curs','multi','L:Curs'],
+    ['Tipus','multi','L:Tipus document'],['Format','chips','L:Format'],
+    ['Enllaç Drive','url'],['Obra','ref','Obres'],['Notes','area']],
+  Concerts: [['Data','date'],['Hora','time'],['Títol','text'],['Agrupació','chips','S:Agrupacions'],['Lloc','text'],
+    ['Població','text'],['Instruments','chips','L:Instrument'],['Director/a','chips','S:Directors'],['Solistes','text'],
+    ['Programa','area'],['Notes','area'],['__files','files','Programa de concert']],
+  Fagotades: [['Any','number'],['Lloc','text'],['Dates','text'],['Carpeta repertori','url'],['Notes','area']],
+  Agrupacions: [['Agrupació','text'],['Tipus','text'],['Notes','area']],
+  Directors: [['Director/a','text'],['Agrupacions','text'],['Notes','area']]
+};
+var LABELS = { 'Compositor':'Compositor / autor', 'Llibre':'Llibre / recull', 'Àmbit':'Activitat', 'Instrument':'Instrument / paper', 'Curs':'Curs / grup', 'Instruments':'Instrument / paper',
+  'Agrupació':'Agrupació (banda, orquestra, conjunt...)', '__tipus':'Tipus de fitxer' };
+var HINTS = { 'Instrument':'Per a qu\u00e8 \u00e9s: fagot sol, fagot i piano, fagot i orquestra, fagotino... o quin paper (1r, 2n, 3r, contrafagot). Pots marcar-ne diversos.', 'Compositor':'Si no el saps, posa \u00abAn\u00f2nim\u00bb o \u00abPopular\u00bb.', 'Llibre':'Els documents amb el mateix llibre es mostren junts i el fitxer es mou al Drive a la carpeta Llibres / nom del llibre.', 'Curs':'Pots marcar-ne diversos si l\'obra serveix per a més d\'un curs.', 'Etiquetes':'Pots marcar-ne diverses.', 'Categoria':'Tria primer de quin tipus de repertori es tracta.', 'Àmbit':'Per a què és: un concert, una fagotada, classe (pedagògic), estudi personal o una prova.' };
+function lbl(k){ return LABELS[k] || k; }
+var KEYS = { Obres:'ID', Documents:'ID', Concerts:'ID', Agrupacions:'Agrupació', Directors:'Director/a', Fagotades:'Any' };
+var SINGULAR = { Obres:'obra', Documents:'document', Concerts:'concert', Fagotades:'fagotada', Agrupacions:'agrupació', Directors:'director/a' };
+
+function run(fn) {
+  var args = Array.prototype.slice.call(arguments, 1);
+  return new Promise(function(res, rej){
+    var r = google.script.run.withSuccessHandler(res).withFailureHandler(rej);
+    r[fn].apply(r, args);
+  });
+}
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function $(id){ return document.getElementById(id); }
+function toast(t){ var e=$('toast'); e.textContent=t; e.style.display='block'; clearTimeout(e._t); e._t=setTimeout(function(){e.style.display='none'},2600); }
+function norm(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+function rows(n){ return D ? D[n].rows : []; }
+function find(n, id){ var k=KEYS[n]; return rows(n).filter(function(r){ return String(r[k])===String(id); })[0]; }
+function fmtDate(d){ var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(d||''); return m ? m[3]+'/'+m[2]+'/'+m[1] : (d||''); }
+
+function obraLabel(o){ return o ? [o['Obra'], o['Compositor']].filter(Boolean).join(' - ') : ''; }
+function concertLabel(c){ return c ? [fmtDate(c['Data']), c['Títol'] || c['Agrupació']].filter(Boolean).join(' · ') : ''; }
+function refLabel(sheet, id){
+  if (!id) return '';
+  var r = find(sheet, id);
+  if (!r) return id;
+  if (sheet==='Obres') return obraLabel(r);
+  if (sheet==='Concerts') return concertLabel(r);
+  if (sheet==='Fagotades') return 'Fagotada ' + r['Any'];
+  return id;
+}
+function docsFor(field, id){ return rows('Documents').filter(function(d){
+  return field==='Concert' ? splitTags(d[field]).indexOf(String(id)) > -1 : String(d[field])===String(id); }); }
+function todayStr(){ var t = new Date(); return t.getFullYear()+'-'+('0'+(t.getMonth()+1)).slice(-2)+'-'+('0'+t.getDate()).slice(-2); }
+// Repertori d'un concert: documents enllaçats al concert + documents de les obres del concert
+function concertDocs(cid){
+  var seen = {}, out = [];
+  docsFor('Concert', cid).concat.apply(docsFor('Concert', cid), rows('Obres').filter(function(o){ return o['Concert']===cid; }).map(function(o){ return docsFor('Obra', o['ID']); }))
+    .forEach(function(d){ if (!seen[d['ID']]) { seen[d['ID']] = 1; out.push(d); } });
+  return out;
+}
+var MESOS = ['gener','febrer','mar\u00e7','abril','maig','juny','juliol','agost','setembre','octubre','novembre','desembre'];
+var DIES = ['Dg.','Dl.','Dt.','Dc.','Dj.','Dv.','Ds.'];
+function monthName(d){ var m = /^(\d{4})-(\d{2})/.exec(d||''); if (!m) return ''; var n = MESOS[+m[2]-1]; return n.charAt(0).toUpperCase() + n.slice(1) + (m[1] != new Date().getFullYear() ? ' ' + m[1] : ''); }
+function dayLabel(d){ var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d||''); if (!m) return d||''; var dt = new Date(+m[1], +m[2]-1, +m[3]);
+  var n = MESOS[+m[2]-1]; return DIES[dt.getDay()] + ' ' + (+m[3]) + (/^[aeiou]/.test(n) ? ' d\'' : ' de ') + n; }
+function upcomingConcerts(){
+  var t = todayStr();
+  return rows('Concerts').filter(function(c){ return c['Data'] && String(c['Data']).slice(0,10) >= t; })
+    .sort(function(a,b){ return String(a['Data']+a['Hora']).localeCompare(String(b['Data']+b['Hora'])); });
+}
+// PDF / fitxers editables de partitura / la resta (\u00e0udio, v\u00eddeo, imatges)
+var EDIT_FORMATS = /^(musicxml|musescore|notion|finale|sibelius|dorico|midi|lilypond|capella|encore|guitar pro)$/i;
+function docKind(d){
+  var f = d['Format'] || '', t = String(d['T\u00edtol']||'') + ' ' + docUrl(d);
+  if (!f || /^pdf$/i.test(f)) return 'pdf';
+  if (EDIT_FORMATS.test(f)) return 'ed';
+  return 'alt';
+}
+function docUrl(d){ return d['Fitxer'] || d['Enllaç Drive'] || ''; }
+function fileId(u){ var m = /\/d\/([-\w]{20,})/.exec(u||'') || /[?&]id=([-\w]{20,})/.exec(u||''); return m ? m[1] : ''; }
+// Portada: miniatura de la primera pàgina generada per Google Drive
+/* Portades: primer s'intenta la miniatura directa de Google Drive. Alguns navegadors (Brave, Safari al m\u00f2bil...)
+   la bloquegen; llavors l'app les demana a trav\u00e9s del servidor (THUMB_PROXY) i les guarda en mem\u00f2ria. */
+var THUMB_PROXY = false, THUMBS = {}, thumbBusy = false;
+function cover(d, label){
+  var id = fileId(docUrl(d)), t = label || d['T\u00edtol'] || '';
+  var img = '';
+  if (id && THUMBS[id]) img = '<img alt="" src="'+THUMBS[id]+'">';
+  else if (id && THUMBS[id] !== '') img = THUMB_PROXY ? '<img alt="" data-tq="'+id+'">' :
+    '<img loading="lazy" alt="" data-tq="'+id+'" src="https://drive.google.com/thumbnail?id='+id+'&sz=w400" onerror="thumbFail(this)">';
+  return '<div class="cover"><div class="cph">'+esc(t)+'</div>' + img +
+    (d['Format'] && d['Format']!=='PDF' ? '<span class="cfmt">'+esc(d['Format'])+'</span>' : '') + '</div>';
+}
+function thumbFail(img){ THUMB_PROXY = true; img.removeAttribute('src'); }
+function pumpThumbs(){
+  if (thumbBusy) return;
+  var H = window.innerHeight + 600, pend = [], seen = {};
+  Array.prototype.forEach.call(document.querySelectorAll('img[data-tq]:not([src])'), function(im){
+    var id = im.dataset.tq;
+    if (THUMBS[id]) { im.src = THUMBS[id]; return; }
+    if (THUMBS[id] === '') { im.remove(); return; }
+    var r = im.parentNode.getBoundingClientRect();
+    if (r.bottom > -200 && r.top < H && r.width > 0 && !seen[id] && pend.length < 12) { seen[id] = 1; pend.push(id); }
+  });
+  if (!pend.length) return;
+  thumbBusy = true;
+  run('getThumbs', pend).then(function(m){
+    pend.forEach(function(id){ THUMBS[id] = m[id] || ''; });
+    Array.prototype.forEach.call(document.querySelectorAll('img[data-tq]:not([src])'), function(im){
+      var v = THUMBS[im.dataset.tq]; if (v) im.src = v; else if (v === '') im.remove();
+    });
+  }).catch(function(){}).then(function(){ thumbBusy = false; });
+}
+setInterval(pumpThumbs, 700);
+// Primera p\u00e0gina del PDF dibuixada a l'app (per als navegadors que no deixen veure el visor de Google)
+function pdfPreview(d, el){
+  var rl = ringLoader(el);
+  pdfLibs().then(function(){ return run('getPdfForEdit', fileId(docUrl(d))); })
+    .then(function(fd){ return window.pdfjsLib.getDocument({ data: b64ToBytes(fd.data) }).promise; })
+    .then(function(pdf){ return pdf.getPage(1).then(function(pg){
+      var w = Math.min(el.clientWidth || 600, 900), dpr = Math.min(window.devicePixelRatio || 1, 2);
+      var v1 = pg.getViewport({ scale: 1 }), vp = pg.getViewport({ scale: w / v1.width * dpr }), c = document.createElement('canvas');
+      c.width = vp.width; c.height = vp.height; c.style.width = '100%'; c.style.display = 'block';
+      rl.done(); el.innerHTML = ''; el.appendChild(c);
+      return pg.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise.then(function(){
+        if (pdf.numPages > 1 || el.closest('.edprev')) { var n = document.createElement('div'); n.className = 'hint'; n.style.cssText = 'padding:6px 10px'; n.textContent = (pdf.numPages > 1 ? 'P\u00e0gina 1 de ' + pdf.numPages + ' \u00b7 ' : '') + 'Toca per veure-la sencera'; el.appendChild(n); }
+        el.onclick = function(){ showStand([d], d['T\u00edtol']); };
+      });
+    }); })
+    .catch(function(e){ el.innerHTML = '<div class="hint" style="padding:12px">No s\'ha pogut mostrar la partitura: ' + esc(e.message || e) + '</div>'; });
+}
+/* Rodeta de càrrega vermella: un cercle que es va omplint mentre es carrega */
+function ringLoader(el, label){
+  var C = 2 * Math.PI * 26, p = 0, alive = true;
+  el.innerHTML = '<div class="ring"><svg viewBox="0 0 64 64"><circle class="trk" cx="32" cy="32" r="26"/>' +
+    '<circle class="arc" cx="32" cy="32" r="26" stroke-dasharray="'+C.toFixed(1)+'" stroke-dashoffset="'+C.toFixed(1)+'" transform="rotate(-90 32 32)"/></svg>' +
+    (label ? '<div class="lbl">'+esc(label)+'</div>' : '') + '</div>';
+  var arc = el.querySelector('.arc');
+  function set(v){ if (arc) arc.setAttribute('stroke-dashoffset', (C * (1 - v)).toFixed(1)); }
+  var t = setInterval(function(){ if (!alive || !document.body.contains(arc)) { clearInterval(t); return; } p += (0.92 - p) * 0.045; set(p); }, 120);
+  set(0.04);
+  return {
+    done: function(){ alive = false; clearInterval(t); set(1); },
+    fail: function(msg){ alive = false; clearInterval(t); el.innerHTML = '<div class="ring"><div class="lbl">'+esc(msg)+'</div></div>'; }
+  };
+}
+
+/* ---------- Visor de fitxers que no són PDF ---------- */
+var OSMD_URL = 'https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.9.2/build/opensheetmusicdisplay.min.js';
+var JSZIP_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+function loadScript(u){ return new Promise(function(res, rej){ var s = document.createElement('script'); s.src = u; s.onload = res; s.onerror = function(){ rej(new Error('No s\'ha pogut carregar el visor')); }; document.head.appendChild(s); }); }
+var FMT_NAMES = { musx:'Finale', mus:'Finale', sib:'Sibelius', dorico:'Dorico', mscz:'MuseScore', mscx:'MuseScore', notion:'Notion', mid:'MIDI', midi:'MIDI', ly:'LilyPond', gp:'Guitar Pro', gpx:'Guitar Pro' };
+function fileExt(d, name){ var m = /\.([a-z0-9]{1,8})$/i.exec(name || d['Títol'] || ''); return m ? m[1].toLowerCase() : ''; }
+function viewKind(d, name){
+  var f = String(d['Format'] || '').toLowerCase(), e = fileExt(d, name);
+  if (/^(pdf)$/.test(e) || (!e && (!f || f === 'pdf'))) return 'pdf';
+  if (/^(mp3|wav|m4a|aac|ogg|oga|flac|aif|aiff|opus)$/.test(e) || f === 'àudio') return 'audio';
+  if (/^(mp4|mov|m4v|webm)$/.test(e) || f === 'vídeo') return 'video';
+  if (/^(jpe?g|png|gif|webp|heic|bmp|svg)$/.test(e) || f === 'imatge') return 'image';
+  if (/^(xml|musicxml|mxl)$/.test(e) || f === 'musicxml') return 'musicxml';
+  if (/^(mscz)$/.test(e) || f === 'musescore') return 'mscz';
+  if (/^pdf$/.test(f)) return 'pdf';
+  return 'other';
+}
+function b64ToBlob(b64, mime){ return new Blob([b64ToBytes(b64)], { type: mime || 'application/octet-stream' }); }
+function fileInfoCard(el, d, fd, msg){
+  var e = fileExt(d, fd && fd.name), app = FMT_NAMES[e] || d['Format'] || 'aquest programa';
+  var u = (fd && fd.url) || docUrl(d);
+  el.innerHTML = '<div style="padding:16px;text-align:center"><div style="font-weight:600;font-size:15px">' + esc((fd && fd.name) || d['Títol']) + '</div>' +
+    '<div class="hint" style="margin:6px 0 12px">' + esc(msg || ('Fitxer de ' + app + '. Aquest format només s\'obre amb ' + app + ' i no es pot mostrar al navegador. Si n\'exportes un PDF o un MusicXML, l\'app el podrà mostrar.')) + '</div>' +
+    '<div class="row" style="justify-content:center;margin:0"><button class="btn p" data-dl="1">Descarrega</button>' + (u ? '<a class="btn" href="'+esc(u)+'" target="_blank" style="text-decoration:none">Obre al Drive</a>' : '') + '</div></div>';
+  el.onclick = null;
+  var b = el.querySelector('[data-dl]');
+  b.onclick = function(ev){ ev.stopPropagation(); b.disabled = true; b.textContent = 'Preparant...';
+    (fd && fd.data ? Promise.resolve(fd) : run('getFileForView', fileId(docUrl(d)))).then(function(x){
+      if (x.tooBig) { toast('El fitxer és massa gran: obre\'l al Drive'); b.disabled = false; b.textContent = 'Descarrega'; return; }
+      var a = document.createElement('a'); a.href = URL.createObjectURL(b64ToBlob(x.data, x.mime)); a.download = x.name; document.body.appendChild(a); a.click(); a.remove();
+      b.disabled = false; b.textContent = 'Descarrega';
+    }).catch(function(e2){ b.disabled = false; b.textContent = 'Descarrega'; toast('Error: ' + e2.message); });
+  };
+}
+function fileViewer(d, el){
+  var k = viewKind(d);
+  if (k === 'pdf') { pdfPreview(d, el); return; }
+  var fid = fileId(docUrl(d));
+  if (k === 'other') { fileInfoCard(el, d, null); return; }
+  var rl = ringLoader(el, d['Títol']);
+  el.onclick = null;
+  run('getFileForView', fid).then(function(fd){
+    var k2 = viewKind(d, fd.name);
+    if (k2 === 'pdf') { pdfPreview(d, el); return; }
+    if (fd.tooBig) { fileInfoCard(el, d, fd, 'El fitxer fa més de 30 MB i no es pot obrir dins l\'app. Obre\'l al Drive.'); return; }
+    if (k2 === 'other') { fileInfoCard(el, d, fd); return; }
+    var blob = b64ToBlob(fd.data, fd.mime), url = URL.createObjectURL(blob);
+    rl.done();
+    if (k2 !== 'audio') el.classList.add('wide');
+    if (k2 === 'audio') {
+      el.innerHTML = '<div style="padding:14px"><div style="font-weight:600;margin-bottom:8px">' + esc(fd.name) + '</div><audio controls preload="metadata" style="width:100%" src="'+url+'"></audio></div>';
+      el.style.minHeight = '0';
+    } else if (k2 === 'video') {
+      el.innerHTML = '<video controls playsinline preload="metadata" style="width:100%;display:block;max-height:70vh;background:#000" src="'+url+'"></video>';
+    } else if (k2 === 'image') {
+      el.innerHTML = '<img src="'+url+'" alt="" style="width:100%;display:block">';
+    } else if (k2 === 'musicxml') {
+      return loadScript(OSMD_URL).then(function(){
+        el.innerHTML = '<div class="hint" style="padding:6px 10px">Partitura dibuixada a partir del MusicXML</div><div class="osmd" style="padding:0 6px"></div>';
+        var osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay(el.querySelector('.osmd'), { autoResize: true, backend: 'svg', drawTitle: true, drawingParameters: 'compacttight' });
+        var src = /\.mxl$/i.test(fd.name) ? blob : new TextDecoder('utf-8').decode(b64ToBytes(fd.data));
+        return osmd.load(src).then(function(){ osmd.render(); });
+      });
+    } else if (k2 === 'mscz') {
+      return loadScript(JSZIP_URL).then(function(){ return JSZip.loadAsync(b64ToBytes(fd.data)); }).then(function(z){
+        var t = z.file(/thumbnail\.png$/i)[0];
+        if (!t) { fileInfoCard(el, d, fd); return; }
+        return t.async('blob').then(function(png){
+          el.innerHTML = '<img src="'+URL.createObjectURL(png)+'" alt="" style="width:100%;display:block;background:#fff">' +
+            '<div class="hint" style="padding:6px 10px">Primera pàgina (miniatura guardada per MuseScore). Per veure-la sencera, obre-la amb MuseScore.</div>';
+        });
+      });
+    }
+  }).catch(function(e){ fileInfoCard(el, d, null, 'No s\'ha pogut mostrar: ' + (e.message || e)); });
+}
+
+function viewerHtml(fid, d){ return (THUMB_PROXY || (d && viewKind(d) !== 'pdf')) ? '<div class="pv" data-pv="'+fid+'"></div>'
+  : '<iframe class="viewer" src="https://drive.google.com/file/d/'+fid+'/preview" allow="autoplay"></iframe>'; }
+function fillPreviews(d){ Array.prototype.forEach.call(document.querySelectorAll('[data-pv]'), function(el){ if (!el._done) { el._done = 1; fileViewer(d, el); } }); }
+function firstDoc(field, id){
+  var ds = docsFor(field, id);
+  return ds.filter(function(d){ return d['Format']==='PDF' || !d['Format']; })[0] || ds[0];
+}
+
+/* ---------- Càrrega ---------- */
+function load(){
+  return run('getData').then(function(d){ D = d;
+      if (!load._probed) { load._probed = 1; var pd0 = (d.Documents.rows || []).filter(function(x){ return fileId(docUrl(x)); })[0];
+        if (pd0) { var im = new Image(); im.onerror = function(){ THUMB_PROXY = true; render(); };
+          im.onload = function(){ if (im.naturalWidth < 2) { THUMB_PROXY = true; render(); } };
+          im.src = 'https://drive.google.com/thumbnail?id=' + fileId(docUrl(pd0)) + '&sz=w100'; } }
+      render(); })
+    .catch(function(e){ $('main').innerHTML = '<div class="empty">No s\'ha pogut carregar: '+esc(e.message)+'</div>'; });
+}
+
+/* ---------- Pestanyes ---------- */
+function renderTabs(){
+  $('tabs').innerHTML = TABS.map(function(t){
+    return '<button data-t="'+t[0]+'" class="'+(S.tab===t[0]?'on':'')+'">'+t[1]+'</button>'; }).join('');
+  Array.prototype.forEach.call($('tabs').children, function(b){
+    b.onclick = function(){ S.tab=b.dataset.t; S.q=''; S.f={}; S.limit=60; render(); window.scrollTo(0,0); };
+  });
+}
+
+function filterSelect(key, label, values){
+  var cur = S.f[key] || '';
+  return '<select data-f="'+esc(key)+'"><option value="">'+esc(label)+'</option>' +
+    values.map(function(v){ return '<option'+(v===cur?' selected':'')+'>'+esc(v)+'</option>'; }).join('') + '</select>';
+}
+function uniq(arr){ return arr.filter(function(v,i,a){ return v && a.indexOf(v)===i; }).sort(); }
+
+function tools(placeholder, selects){
+  return '<div class="tools"><input type="search" id="q" placeholder="'+placeholder+'" value="'+esc(S.q)+'">' + (selects||'') + '</div>';
+}
+function bindTools(){
+  var q=$('q'); if(q) q.oninput=function(){ S.q=q.value; S.limit=60; renderList(); };
+  Array.prototype.forEach.call(document.querySelectorAll('[data-f]'), function(s){
+    s.onchange=function(){ S.f[s.dataset.f]=s.value; S.limit=60; renderList(); };
+  });
+}
+function matches(r, extra){
+  var q = norm(S.q);
+  if (q) {
+    var hay = norm(Object.keys(r).map(function(k){ return r[k]; }).join(' ') + ' ' + (extra||''));
+    if (q.split(/\s+/).some(function(w){ return hay.indexOf(w)===-1; })) return false;
+  }
+  for (var k in S.f) {
+    if (!S.f[k]) continue;
+    if (k==='Etiquetes' || k==='Curs' || k==='Tipus' || k==='Instrument') { if (splitTags(r[k]).indexOf(S.f[k])===-1) return false; }
+    else if (k==='Categoria' && S.f[k]==='__none') { if (r[k]) return false; }
+    else if (k==='__rev') { if ((S.f[k]==='Revisats') !== !!r['Revisat']) return false; }
+    else if (String(r[k])!==S.f[k]) return false;
+  }
+  return true;
+}
+
+/* ---------- Render ---------- */
+function render(){
+  renderTabs();
+  if (!D) return;
+  var L = D.Llistes, h = '';
+  if (S.tab==='Inici') { renderHome(); return; }
+  if (S.tab==='Obres') {
+    var cats = ['Totes'].concat(L['Categoria']||[]), curCat = S.f['Categoria']||'';
+    var forms = curCat ? uniq(rows('Obres').filter(function(o){ return o['Categoria']===curCat; }).map(function(o){ return o['Formació']; })) : [];
+    h = '<div class="catbar">' + cats.map(function(c){ var v = c==='Totes'?'':c;
+          return '<button class="chip'+(v===curCat?' on':'')+'" data-cat="'+esc(v)+'">'+esc(c)+'</button>'; }).join('') + '</div>' +
+        (forms.length ? '<div class="catbar sub">' + ['Totes'].concat(forms).map(function(c){ var v = c==='Totes'?'':c;
+          return '<button class="chip'+(v===(S.f['Formació']||'')?' on':'')+'" data-form="'+esc(v)+'">'+esc(c)+'</button>'; }).join('') + '</div>' : '');
+    h += tools('Cerca obra, compositor, notes...',
+      filterSelect('Àmbit','Activitat',L['Àmbit']) + filterSelect('Instrument','Instrument',L['Instrument']) +
+      filterSelect('Agrupació','Agrupació',uniq(rows('Agrupacions').map(function(r){return r['Agrupació'];}))) +
+      filterSelect('Etiquetes','Etiqueta',L['Etiquetes']||[]));
+  } else if (S.tab==='Cursos') {
+    if (S.centre===undefined) S.centre = 'Vila-seca';
+    var cursos = (L['Curs']||[]).filter(function(c){ return !isGroup(c); }), cc = S.curs||'', cg = centreGroups();
+    var short = function(c){ return c.replace(/^Elemental /,'').replace(/^Professional /,''); };
+    var grp = function(title, list){ return list.length ? '<div class="cgrp"><span class="cgl">'+title+'</span>' + list.map(function(c){
+        return '<button class="chip'+(c===cc?' on':'')+'" data-curs="'+esc(c)+'">'+esc(short(c))+'</button>'; }).join('') + '</div>' : ''; };
+    h = '<div class="catbar">' + ['Tots'].concat(L['Centre']||[]).map(function(c){ var v = c==='Tots'?'':c;
+          return '<button class="chip'+(v===S.centre?' on':'')+'" data-centre="'+esc(v)+'">'+esc(c)+'</button>'; }).join('') + '</div>' +
+        '<div class="cursos">' +
+          (cg.length ? '<div class="cgrp"><span class="cgl">'+(S.centre ? 'Grups' : 'Grups')+'</span>' + cg.map(function(c){
+              return '<button class="chip'+(c===cc?' on':'')+'" data-curs="'+esc(c)+'">'+esc(c)+'</button>'; }).join('') + '</div>' : '') +
+          '<div class="cgrp"><button class="chip'+(!cc?' on':'')+'" data-curs="">Tots</button>' +
+            cursos.filter(function(c){ return /^Iniciaci/.test(c); }).map(function(c){
+              return '<button class="chip'+(c===cc?' on':'')+'" data-curs="'+esc(c)+'">'+esc(c)+'</button>'; }).join('') + '</div>' +
+          grp('Elemental', cursos.filter(function(c){ return /^Elemental/.test(c); })) +
+          grp('Professional', cursos.filter(function(c){ return /^Professional/.test(c); })) +
+          grp('Altres', cursos.filter(function(c){ return !/^(Iniciaci|Elemental|Professional)/.test(c); })) +
+        '</div>' +
+        tools('Cerca al repertori pedagògic...', filterSelect('Instrument','Instrument',L['Instrument']));
+  } else if (S.tab==='Documents') {
+    var dcats = ['Totes'].concat(L['Categoria']||[]).concat(['Sense classificar']), dcur = S.f['Categoria']||'';
+    var dforms = (dcur && dcur!=='__none') ? uniq(rows('Documents').filter(function(o){ return o['Categoria']===dcur; }).map(function(o){ return o['Formació']; })) : [];
+    if (!S.kind) S.kind = 'pdf';
+    var kn = { pdf: 0, ed: 0, alt: 0 }; rows('Documents').forEach(function(d){ kn[docKind(d)]++; });
+    h = '<div class="seg">' + [['pdf','PDF'],['ed','Editables'],['alt','Altres'],['tot','Tots']].map(function(k){
+          var n = k[0]==='tot' ? rows('Documents').length : kn[k[0]];
+          return '<button class="'+(S.kind===k[0]?'on':'')+'" data-kind="'+k[0]+'">'+k[1]+' <span>'+n+'</span></button>'; }).join('') + '</div>' +
+        (S.kind==='ed' ? '<div class="hint" style="margin:-4px 0 10px">Notion, MusicXML, MuseScore, Finale, Sibelius, Dorico, MIDI...</div>' : '');
+    h += '<div class="catbar">' + dcats.map(function(c){ var v = c==='Totes'?'':(c==='Sense classificar'?'__none':c);
+          return '<button class="chip'+(v===dcur?' on':'')+'" data-cat="'+esc(v)+'">'+esc(c)+'</button>'; }).join('') + '</div>' +
+        (dforms.length ? '<div class="catbar sub">' + ['Totes'].concat(dforms).map(function(c){ var v = c==='Totes'?'':c;
+          return '<button class="chip'+(v===(S.f['Formació']||'')?' on':'')+'" data-form="'+esc(v)+'">'+esc(c)+'</button>'; }).join('') + '</div>' : '');
+    h += tools('Cerca t\u00edtol, compositor...', filterSelect('Compositor','Compositor',uniq(rows('Documents').map(function(d){ return d['Compositor']; }))) +
+      filterSelect('Instrument','Instrument',L['Instrument']||[]) +
+      filterSelect('Tipus','Tipus',L['Tipus document']) + filterSelect('Format','Format',L['Format']) +
+      filterSelect('Curs','Curs',L['Curs']||[]) + filterSelect('__rev','Revisi\u00f3',['Per revisar','Revisats']));
+  } else if (S.tab==='Compositors') {
+    h = tools('Cerca compositor...', '');
+  } else {
+    h = tools('Cerca...', '');
+  }
+  $('main').innerHTML = h + '<div id="list"></div>';
+  bindTools();
+  Array.prototype.forEach.call(document.querySelectorAll('[data-centre]'), function(b){
+    b.onclick = function(){ S.centre = b.dataset.centre; render(); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-curs]'), function(b){
+    b.onclick = function(){ S.curs = b.dataset.curs; render(); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-cat]'), function(b){
+    b.onclick = function(){ S.f['Categoria'] = b.dataset.cat; S.f['Formació'] = ''; render(); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-kind]'), function(b){
+    b.onclick = function(){ S.kind = b.dataset.kind; S.limit = 60; render(); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-form]'), function(b){
+    b.onclick = function(){ S.f['Formació'] = b.dataset.form; render(); };
+  });
+  renderList();
+  $('fab').style.display = (S.tab==='Cursos') ? 'block' : 'block';
+}
+
+function card(t, s, tags, onclick){
+  return '<div class="card" data-k="'+esc(onclick)+'"><div class="t">'+esc(t||'(sense títol)')+'</div>' +
+    (s?'<div class="s">'+esc(s)+'</div>':'') + (tags||'') + '</div>';
+}
+function tag(t, a){ return t ? '<span class="tag'+(a?' a':'')+'">'+esc(t)+'</span>' : ''; }
+
+function obraCard(o){
+  var nd = docsFor('Obra', o['ID']).length;
+  var sub = [o['Instrument'], o['Paper'], o['Agrupació'], o['Any aproximat']].filter(Boolean).join(' · ');
+  var tags = tag(o['Formació'] || o['Categoria'], true) + tag(o['Àmbit']) + splitTags(o['Curs']).map(function(c){ return tag(c); }).join('') + tag(o['Fagotada'] ? 'Fagotada '+o['Fagotada'] : '') +
+    splitTags(o['Etiquetes']).map(function(t){ return tag(t); }).join('') +
+    (o['Fragment orquestral']?tag('Fragment orquestral'):'') + (nd?tag(nd+(nd>1?' documents':' document')):'');
+  var title = [o['Obra'],o['Compositor']].filter(Boolean).join(' - ');
+  var fd = firstDoc('Obra', o['ID']);
+  if (!fd) return card(title, sub, tags, 'Obres|'+o['ID']);
+  return '<div class="card wt" data-k="Obres|'+esc(o['ID'])+'">'+cover(fd, o['Obra'])+'<div class="body"><div class="t">'+esc(title)+'</div>' +
+    (sub?'<div class="s">'+esc(sub)+'</div>':'') + tags + '</div></div>';
+}
+
+function renderList(){
+  var list = $('list'), h = '', items;
+  if (S.tab==='Obres') {
+    items = rows('Obres').filter(function(o){ return matches(o, refLabel('Concerts', o['Concert'])); })
+      .sort(function(a,b){ return norm(a['Obra']).localeCompare(norm(b['Obra'])) || norm(a['Compositor']).localeCompare(norm(b['Compositor'])); });
+    h = '<div class="count">'+items.length+' obres</div>' + items.map(obraCard).join('');
+  }
+  else if (S.tab==='Cursos') {
+    var cg = centreGroups(), cursos = cg.concat((D.Llistes['Curs']||[]).filter(function(c){ return !isGroup(c); }));
+    items = rows('Obres').filter(function(o){ return (o['Curs'] || o['Àmbit']==='Pedagògic' || cg.some(function(g){ return inGroup(o, g); })) && inCentre(o) && matches(o); })
+      .sort(function(a,b){ return norm(a['Obra']).localeCompare(norm(b['Obra'])); });
+    var list2 = S.curs ? [S.curs] : cursos.concat(['Sense curs']);
+    list2.forEach(function(c){
+      var g = items.filter(function(o){ return c==='Sense curs' ? !splitTags(o['Curs']).length && !cg.some(function(x){ return inGroup(o, x); }) : inGroup(o, c); });
+      if (g.length) h += '<div class="group">'+esc(c)+' <span class="gc">'+g.length+'</span></div>' + g.map(obraCard).join('');
+    });
+    if (S.curs) { var cdn = pdfOnly(courseDocs(S.curs)).length;
+      if (cdn) h = '<div class="row" style="margin-top:0"><button class="btn p" id="cpkg">Paquet de '+esc(S.curs)+' (PDF \u00fanic)</button><button class="btn" id="cstand">Mode faristol</button><span class="hint" style="align-self:center">'+cdn+' PDF</span></div>' + h; }
+    if (!h) h = '<div class="empty">'+(S.curs ? 'Encara no hi ha obres per a '+esc(S.curs)+'.' : 'Encara no hi ha repertori pedagògic.')+
+      '<br>Prem + per afegir-ne.</div>';
+  }
+  else if (S.tab==='Documents') {
+    items = rows('Documents').filter(function(d){ return (S.kind==='tot' || docKind(d)===S.kind) && matches(d, refLabel('Obres', d['Obra'])+' '+refLabel('Concerts', d['Concert'])); })
+      .sort(function(a,b){ return norm(a['Títol']).localeCompare(norm(b['Títol'])); });
+    var ents = [], bk = {};
+    items.forEach(function(d){
+      var b = d['Llibre'];
+      if (!b) { ents.push({ d: d, k: norm(d['T\u00edtol']) }); return; }
+      if (!bk[b]) { bk[b] = { book: b, docs: [], k: norm(b) }; ents.push(bk[b]); }
+      bk[b].docs.push(d);
+    });
+    ents.sort(function(a,b){ return a.k.localeCompare(b.k); });
+    var shown = ents.slice(0, (S.limit || 60) * (S.view==='list' ? 3 : 1));
+    var vt = '<span class="vt"><button class="'+(S.view!=='list'?'on':'')+'" data-view="grid">Portades</button><button class="'+(S.view==='list'?'on':'')+'" data-view="list">Llista</button></span>';
+    if (S.view==='list') h = '<div class="count">'+items.length+' documents'+vt+'</div><div class="lst">' + shown.map(function(e){
+      if (e.book) return docRow(bookCover(e.docs), e.book, 'Llibre \u00b7 '+e.docs.length+' fitxers', 'Llibre|'+e.book);
+      var d = e.d; return docRow(d, d['T\u00edtol'], [d['Compositor'], d['Instrument'], d['Tipus'], d['Format'], d['Formaci\u00f3'] || d['Categoria']].filter(Boolean).join(' \u00b7 '), 'Documents|'+d['ID']);
+    }).join('') + '</div>';
+    else h = '<div class="count">'+items.length+' documents'+vt+'</div><div class="grid">' + shown.map(function(e){
+      if (e.book) {
+        var fd = bookCover(e.docs);
+        return '<div class="gi card book" style="padding:0;border:0;background:none" data-k="Llibre|'+esc(e.book)+'">' + cover(fd, e.book) +
+          '<div class="t">'+esc(e.book)+'</div><div class="s">Llibre \u00b7 '+e.docs.length+' fitxers</div></div>';
+      }
+      var d = e.d;
+      return '<div class="gi card" style="padding:0;border:0;background:none" data-k="Documents|'+esc(d['ID'])+'">' + cover(d) +
+        '<div class="t">'+esc(d['T\u00edtol'])+'</div><div class="s">'+esc(d['Compositor'] || d['Tipus'] || '')+'</div></div>';
+    }).join('') + '</div>' +
+    (S.view==='list' ? '' : '') + (ents.length > shown.length ? '<div class="row" style="justify-content:center"><button class="btn" id="more">Mostra\'n més</button></div>' : '');
+  }
+  else if (S.tab==='Concerts') {
+    items = rows('Concerts').filter(function(c){ return matches(c); })
+      .sort(function(a,b){ return String(b['Data']).localeCompare(String(a['Data'])); });
+    h = '<div class="count">'+items.length+' concerts</div>' + items.map(function(c){
+      return card(c['Títol'] || c['Agrupació'], [fmtDate(c['Data']), c['Hora'], c['Lloc'], c['Població']].filter(Boolean).join(' · '),
+        tag(c['Agrupació'], true) + tag(c['Director/a']), 'Concerts|'+c['ID']);
+    }).join('');
+  }
+  else if (S.tab==='Fagotades') {
+    items = rows('Fagotades').filter(function(f){ return matches(f); })
+      .sort(function(a,b){ return Number(b['Any'])-Number(a['Any']); });
+    h = items.map(function(f){
+      var n = rows('Obres').filter(function(o){ return String(o['Fagotada'])===String(f['Any']); }).length;
+      return card('Fagotada '+f['Any'], [f['Lloc'], f['Dates']].filter(Boolean).join(' · '), tag(n+' obres', true), 'Fagotades|'+f['Any']);
+    }).join('');
+  }
+  else if (S.tab==='Compositors') {
+    var cm = composerMap(), q = norm(S.q);
+    var names = Object.keys(cm).filter(function(n){ return !q || norm(n).indexOf(q) > -1; })
+      .sort(function(a,b){ return norm(a).localeCompare(norm(b)); });
+    var last = '';
+    h = '<div class="count">'+names.length+' compositors</div>' + names.map(function(n){
+      var L1 = norm(n).charAt(0).toUpperCase(), head = L1 !== last ? '<div class="group">'+esc(L1)+'</div>' : ''; last = L1;
+      var c = cm[n], sub = [c.o ? c.o + (c.o > 1 ? ' obres' : ' obra') : '', c.d ? c.d + (c.d > 1 ? ' documents' : ' document') : ''].filter(Boolean).join(' \u00b7 ');
+      return head + card(n, sub, '', 'Compositor|'+n);
+    }).join('');
+    if (!names.length) h = '<div class="empty">'+(q ? 'Cap compositor coincideix amb la cerca.' : 'Encara no hi ha compositors. Es van omplint quan edites les obres i els documents.')+'</div>';
+  }
+  else {
+    var n = S.tab, k = KEYS[n];
+    items = rows(n).filter(function(r){ return matches(r); }).sort(function(a,b){ return norm(a[k]).localeCompare(norm(b[k])); });
+    h = items.map(function(r){
+      var c = rows('Obres').filter(function(o){ return o[k]===r[k]; }).length +
+              rows('Concerts').filter(function(o){ return o[k]===r[k]; }).length;
+      return card(r[k], r['Tipus'] || r['Agrupacions'] || '', c ? tag(c+' registres', true) : '', n+'|'+r[k]);
+    }).join('');
+  }
+  list.innerHTML = h || '<div class="empty">No hi ha res per mostrar.</div>';
+  if ($('more')) $('more').onclick = function(){ S.limit = (S.limit||60) + 60; renderList(); };
+  if ($('cpkg')) $('cpkg').onclick = function(){ showPackage(courseDocs(S.curs), 'Repertori ' + S.curs + (S.centre ? ' \u00b7 ' + S.centre : '')); };
+  if ($('cstand')) $('cstand').onclick = function(){ showStand(courseDocs(S.curs), S.curs); };
+  Array.prototype.forEach.call(list.querySelectorAll('[data-view]'), function(b){
+    b.onclick = function(e){ e.stopPropagation(); setView(b.dataset.view); renderList(); };
+  });
+  Array.prototype.forEach.call(list.querySelectorAll('.card'), function(c){
+    c.onclick = function(){ var p=c.dataset.k.split('|'), id=p.slice(1).join('|'); if (p[0]==='Llibre') showBook(id); else if (p[0]==='Compositor') showComposer(id); else showDetail(p[0], id); };
+  });
+}
+
+function docRow(d, title, sub, key){
+  return '<div class="lrow card" data-k="'+esc(key)+'">' + cover(d, ' ') + '<div class="body"><div class="t">'+esc(title||'(sense t\u00edtol)')+'</div>' +
+    (sub ? '<div class="s">'+esc(sub)+'</div>' : '') + '</div></div>';
+}
+
+function delDoc(r){
+  if (!confirm('Esborrar \u00ab' + (r['T\u00edtol']||'aquest document') + '\u00bb de l\'arxiu i del Drive?\n\nEl fitxer anir\u00e0 a la paperera del Drive i el podr\u00e0s recuperar durant 30 dies.')) return;
+  run('deleteDocument', r['ID']).then(function(m){ return load().then(function(){ toast(m); closePanel(); }); })
+    .catch(function(e){ toast('Error: '+e.message); });
+}
+
+function concertPicker(cid, back){
+  var box = $('cpick');
+  box.innerHTML = '<div class="share"><h3>Afegeix partitures al concert</h3>' +
+    '<input type="search" id="cpq" placeholder="Cerca pel nom de l\'obra o del fitxer..." style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit">' +
+    '<div class="pick" id="cplist"></div><div class="row"><button class="btn p" id="cpok">Fet</button></div></div>';
+  var added = 0;
+  $('cpq').focus();
+  $('cpq').oninput = function(){
+    var q = norm(this.value);
+    var res = q.length < 2 ? [] : rows('Documents').filter(function(d){ return norm(d['T\u00edtol']+' '+(d['Llibre']||'')).indexOf(q) > -1; }).slice(0, 40);
+    $('cplist').innerHTML = res.map(function(d){
+      var on = splitTags(d['Concert']).indexOf(cid) > -1;
+      return '<div data-id="'+esc(d['ID'])+'" style="display:flex;gap:10px;align-items:center">'+cover(d, ' ').replace('class="cover"','class="cover" style="flex:0 0 30px"')+
+        '<span style="flex:1">'+esc(d['T\u00edtol'])+'<br><span class="hint">'+esc([d['Tipus'], d['Format'], d['Llibre']].filter(Boolean).join(' \u00b7 '))+'</span></span>'+
+        '<b style="color:var(--blue-ink)">'+(on?'\u2713':'+')+'</b></div>'; }).join('');
+    Array.prototype.forEach.call($('cplist').children, function(el){
+      el.onclick = function(){
+        var d = find('Documents', el.dataset.id); if (splitTags(d['Concert']).indexOf(cid) > -1) return;
+        el.querySelector('b').textContent = '...';
+        run('linkDocConcert', d['ID'], cid, true).then(function(v){ d['Concert'] = v; added++; el.querySelector('b').textContent = '\u2713'; })
+          .catch(function(e){ toast('Error: '+e.message); });
+      };
+    });
+  };
+  $('cpok').onclick = function(){ (added ? load() : Promise.resolve()).then(back); };
+}
+
+/* ---------- Inici ---------- */
+function renderHome(){
+  var docs = rows('Documents'), pend = D.pendents || 0;
+  var none = docs.filter(function(d){ return !d['Categoria']; }).length;
+  var books = uniq(docs.map(function(d){ return d['Llibre']; }));
+  var obres = rows('Obres').slice(-6).reverse();
+  // Repertori per estudiar: concerts d'aquest mes i del seg\u00fcent
+  var nd = new Date(), lim = new Date(nd.getFullYear(), nd.getMonth() + 2, 1);
+  var limS = lim.getFullYear() + '-' + ('0' + (lim.getMonth() + 1)).slice(-2) + '-01';
+  var up = upcomingConcerts().filter(function(c){ return String(c['Data']).slice(0,10) < limS; });
+  var nodate = rows('Concerts').filter(function(c){ return !c['Data'] && (c['T\u00edtol'] || c['Agrupaci\u00f3']); });
+  var h = '<div class="tools"><input type="search" id="hq" placeholder="Cerca a tot l\'arxiu..."></div>' +
+    '<div class="group" style="display:flex;align-items:center">Repertori per estudiar<button class="btn" id="hnewc" style="margin-left:auto;padding:4px 10px;font-size:13px;font-weight:500">+ Nou concert</button></div>' +
+    (up.length || nodate.length ? up.map(function(c, i){
+      var ds = concertDocs(c['ID']), mo = String(c['Data']).slice(0,7), prev = i ? String(up[i-1]['Data']).slice(0,7) : '';
+      var mh = mo !== prev ? '<div class="mh">'+esc(monthName(c['Data']))+'</div>' : '';
+      return mh + '<div class="cc"><div class="cch" data-c="'+esc(c['ID'])+'"><div class="ccd">'+esc(dayLabel(c['Data']))+(c['Hora']?' \u00b7 '+esc(c['Hora']):'')+'</div>' +
+        '<div class="t">'+esc(c['T\u00edtol'] || c['Agrupaci\u00f3'] || 'Concert')+'</div>' +
+        '<div class="s">'+esc([c['Agrupaci\u00f3'], c['Lloc'], c['Poblaci\u00f3']].filter(Boolean).join(' \u00b7 '))+'</div></div>' +
+        (ds.length ? '<div class="ccstrip" style="width:'+(ds.length*50+2)+'px">' + ds.map(function(d){ return '<div class="gi" data-open="'+esc(d['ID'])+'" title="'+esc(d['T\u00edtol'])+'">' + cover(d, ' ') + '</div>'; }).join('') + '</div>'
+          : '<div class="ccnone">Sense partitures: toca el concert per afegir-n\'hi.</div>') +
+        (ds.length ? '<button class="btn ccoff" data-off="'+esc(c['ID'])+'">Sense connexi\u00f3</button>' : '') + '</div>';
+    }).join('') + nodate.map(function(c, i){
+      return (i ? '' : '<div class="mh">Sense data</div>') + '<div class="cc"><div class="cch" data-c="'+esc(c['ID'])+'"><div class="ccd" style="color:#c62828">Falta la data: toca per posar-la</div>' +
+        '<div class="t">'+esc(c['T\u00edtol'] || c['Agrupaci\u00f3'] || 'Concert')+'</div><div class="s">'+esc([c['Agrupaci\u00f3'], c['Lloc'], c['Poblaci\u00f3']].filter(Boolean).join(' \u00b7 '))+'</div></div></div>';
+    }).join('') : '<div class="hint">No tens cap concert programat aquest mes ni el seg\u00fcent. Toca \u00ab+ Nou concert\u00bb per afegir-ne un i posar-hi les partitures.</div>') +
+    (pend ? '<div class="hint" style="margin:14px 2px 0"><a href="#" id="hpend">'+pend+' fitxers nous del Drive per acceptar</a></div>' : '') +
+    '<div class="tiles" style="margin-top:14px">' +
+      '<div class="tile" data-go="rev"><b>'+docs.filter(function(d){ return !d['Revisat']; }).length+'</b><span>Documents per revisar</span></div>' +
+      '<div class="tile" data-go="none"><b>'+none+'</b><span>Sense classificar</span></div>' +
+      '<div class="tile" data-go="docs"><b>'+docs.length+'</b><span>Documents</span></div>' +
+      '<div class="tile" data-go="books"><b>'+books.length+'</b><span>Llibres</span></div>' +
+    '</div>' +
+    (obres.length ? '<div class="group">Obres afegides fa poc</div>' + obres.map(obraCard).join('') : '') +
+    '<div class="group">Eines</div><div class="row" style="margin-top:0"><button class="btn" id="htools">Inventari, revisi\u00f3 i classificaci\u00f3</button></div>';
+  $('main').innerHTML = h;
+  $('hq').onkeydown = function(e){ if (e.key==='Enter') { S.tab='Documents'; S.kind='tot'; S.f={}; S.q=this.value; S.limit=60; render(); } };
+  Array.prototype.forEach.call(document.querySelectorAll('[data-go]'), function(t){
+    t.onclick = function(){
+      var g = t.dataset.go;
+      if (g==='pend') { showReview(); return; }
+      if (g==='rev') { S.revSkip = {}; reviewNext(); return; }
+      S.tab='Documents'; S.q=''; S.f={}; S.limit=60; S.kind='tot';
+      if (g==='none') S.f['Categoria']='__none';
+      if (g==='books') S.q='';
+      render(); window.scrollTo(0,0);
+      if (g==='books') { showBooks(); }
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('#main [data-open]'), function(g){ g.onclick = function(){ showDetail('Documents', g.dataset.open); }; });
+  Array.prototype.forEach.call(document.querySelectorAll('#main .card'), function(c){
+    c.onclick = function(){ var p=c.dataset.k.split('|'); showDetail(p[0], p.slice(1).join('|')); };
+  });
+  $('htools').onclick = function(){ showTools(); };
+  $('hnewc').onclick = function(){ showForm('Concerts', {}); };
+  if ($('hpend')) $('hpend').onclick = function(e){ e.preventDefault(); showReview(); };
+  Array.prototype.forEach.call(document.querySelectorAll('[data-c]'), function(c){ c.onclick = function(){ showDetail('Concerts', c.dataset.c); }; });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-off]'), function(b){ b.onclick = function(){
+    var c = find('Concerts', b.dataset.off); showPackage(concertDocs(c['ID']), concertLabel(c), null, { offline: true }); }; });
+}
+function showBooks(){
+  var bk = {}; rows('Documents').forEach(function(d){ if (d['Llibre']) (bk[d['Llibre']] = bk[d['Llibre']] || []).push(d); });
+  var names = Object.keys(bk).sort(function(a,b){ return norm(a).localeCompare(norm(b)); });
+  openPanel('Llibres', names.length ? '<div class="grid">' + names.map(function(n){
+    return '<div class="gi" data-book="'+esc(n)+'">' + cover(bookCover(bk[n]), n) + '<div class="t">'+esc(n)+'</div><div class="s">'+bk[n].length+' fitxers</div></div>'; }).join('') + '</div>'
+    : '<div class="empty">Encara no hi ha cap llibre.</div>');
+  Array.prototype.forEach.call($('panel').querySelectorAll('[data-book]'), function(g){ g.onclick = function(){ showBook(g.dataset.book); }; });
+}
+
+/* ---------- Compositors ---------- */
+// Agrupa per nom sense distingir maj\u00fascules ni accents (Dvorak = Dvo\u0159\u00e1k), i es queda amb la grafia m\u00e9s freq\u00fcent
+function composerMap(){
+  var byKey = {};
+  function add(n, f){ n = String(n||'').trim(); if (!n) return; var k = norm(n);
+    var e = byKey[k] = byKey[k] || { names: {}, o: 0, d: 0 }; e.names[n] = (e.names[n]||0) + 1; e[f]++; }
+  rows('Obres').forEach(function(o){ add(o['Compositor'], 'o'); });
+  rows('Documents').forEach(function(d){ add(d['Compositor'], 'd'); });
+  var out = {};
+  Object.keys(byKey).forEach(function(k){ var e = byKey[k];
+    var best = Object.keys(e.names).sort(function(a,b){ return e.names[b] - e.names[a]; })[0]; out[best] = { o: e.o, d: e.d, key: k }; });
+  return out;
+}
+function showComposer(name){
+  var k = norm(name);
+  var obres = rows('Obres').filter(function(o){ return norm(o['Compositor']) === k; }).sort(function(a,b){ return norm(a['Obra']).localeCompare(norm(b['Obra'])); });
+  var docs = rows('Documents').filter(function(d){ return norm(d['Compositor']) === k; }).sort(function(a,b){ return norm(a['T\u00edtol']).localeCompare(norm(b['T\u00edtol'])); });
+  var back = function(){ showComposer(name); };
+  openPanel(name, (pdfOnly(docs).length ? '<div class="row" style="margin-top:0"><button class="btn p" id="cmstand">Mode faristol</button><button class="btn" id="cmpkg">PDF \u00fanic</button></div>' : '') +
+    (obres.length ? '<h3>Obres <span class="gc">'+obres.length+'</span></h3>' + obres.map(obraCard).join('') : '') +
+    (docs.length ? '<h3>Documents <span class="gc">'+docs.length+'</span></h3><div class="grid">' + docs.map(function(d){
+      return '<div class="gi" data-open="'+esc(d['ID'])+'">' + cover(d) + '<div class="t">'+esc(d['T\u00edtol'])+'</div><div class="s">'+esc(d['Tipus']||'')+'</div></div>'; }).join('') + '</div>' : ''));
+  Array.prototype.forEach.call($('panel').querySelectorAll('[data-open]'), function(g){ g.onclick = function(){ showDetail('Documents', g.dataset.open, back); }; });
+  Array.prototype.forEach.call($('panel').querySelectorAll('.card'), function(c){ c.onclick = function(){ var p = c.dataset.k.split('|'); showDetail(p[0], p.slice(1).join('|'), back); }; });
+  if ($('cmstand')) $('cmstand').onclick = function(){ showStand(docs, name); };
+  if ($('cmpkg')) $('cmpkg').onclick = function(){ showPackage(docs.slice(), name, back); };
+}
+
+/* ---------- Llibres ---------- */
+function bookCover(docs){
+  return docs.filter(function(d){ return /full score|partitura general|general|score/i.test(d['T\u00edtol']); })[0] ||
+    docs.slice().sort(function(a,b){ return norm(a['T\u00edtol']).localeCompare(norm(b['T\u00edtol'])); })[0];
+}
+function showBook(name){
+  var docs = rows('Documents').filter(function(d){ return d['Llibre']===name; })
+    .sort(function(a,b){ return norm(a['T\u00edtol']).localeCompare(norm(b['T\u00edtol'])); });
+  var back = function(){ showBook(name); };
+  var short = function(d){ var tt = String(d['T\u00edtol']||''), sx = ' - ' + name;
+    return tt.toLowerCase().slice(-sx.length) === sx.toLowerCase() ? tt.slice(0, -sx.length) : tt; };
+  var body = S.view==='list' ? '<div class="lst">' + docs.map(function(d){ return docRow(d, short(d), [d['Tipus'], d['Format']].filter(Boolean).join(' \u00b7 '), 'Documents|'+d['ID']).replace('class="lrow card"', 'class="lrow" data-open="'+esc(d['ID'])+'"'); }).join('') + '</div>' :
+    '<div class="grid">' + docs.map(function(d){
+      var tt = String(d['T\u00edtol']||''), sx = ' - ' + name;
+      if (tt.toLowerCase().slice(-sx.length) === sx.toLowerCase()) tt = tt.slice(0, -sx.length);
+      return '<div class="gi" data-open="'+esc(d['ID'])+'">' + cover(d, tt) + '<div class="t">'+esc(tt)+'</div><div class="s">'+esc(d['Tipus']||'')+'</div></div>';
+    }).join('') + '</div>' +
+    '';
+  openPanel(name, '<div class="count">'+docs.length+' fitxers en aquest llibre<span class="vt"><button class="'+(S.view!=='list'?'on':'')+'" data-view="grid">Portades</button><button class="'+(S.view==='list'?'on':'')+'" data-view="list">Llista</button></span></div>' + body +
+    '<div class="row" style="margin-top:20px"><button class="btn p" id="bstand">Mode faristol</button><button class="btn" id="bpkg">PDF \u00fanic (gui\u00f3 + particel\u00b7les)</button><button class="btn" id="bmove">Ajunta-ho en una carpeta del Drive</button><button class="btn" id="bren">Canvia el nom</button><button class="btn d" id="bdel">Desfes el llibre</button></div>');
+  Array.prototype.forEach.call($('panel').querySelectorAll('[data-open]'), function(g){
+    g.onclick = function(){ showDetail('Documents', g.dataset.open, back); };
+  });
+  Array.prototype.forEach.call($('panel').querySelectorAll('[data-view]'), function(b){
+    b.onclick = function(){ setView(b.dataset.view); showBook(name); };
+  });
+  var ids = docs.map(function(d){ return d['ID']; });
+  $('bstand').onclick = function(){ showStand(docs, name); };
+  $('bpkg').onclick = function(){ showPackage(docs.slice(), name, back, { score: true }); };
+  $('bmove').onclick = function(){
+    var bb = $('bmove'); bb.disabled = true; bb.textContent = 'Movent ' + docs.length + ' fitxers...';
+    run('moveBook', name).then(function(m){ return load().then(function(){ toast(m); showBook(name); }); })
+      .catch(function(e){ bb.disabled = false; bb.textContent = 'Ajunta-ho en una carpeta del Drive'; toast('Error: ' + e.message); });
+  };
+  $('bren').onclick = function(){
+    var nn = prompt('Nom del llibre:', name); if (!nn || nn===name) return;
+    run('setLlibre', ids, '', nn.trim()).then(load).then(function(){ toast('Nom canviat'); showBook(nn.trim()); }).catch(function(e){ toast('Error: '+e.message); });
+  };
+  $('bdel').onclick = function(){
+    if (!confirm('Tornar a mostrar aquests fitxers per separat? No s\'esborra res.')) return;
+    run('setLlibre', ids, '', '').then(load).then(function(){ toast('Llibre desfet'); closePanel(); }).catch(function(e){ toast('Error: '+e.message); });
+  };
+}
+
+/* ---------- Panell ---------- */
+function openPanel(title, body, back){
+  var p = $('panel');
+  p.innerHTML = '<div class="ph"><button class="btn" id="pback">Enrere</button><h2>'+esc(title)+'</h2></div><div class="pb">'+body+'</div>';
+  p.classList.add('open'); p.scrollTop = 0;
+  $('pback').onclick = back || closePanel;
+}
+function closePanel(){ $('panel').classList.remove('open'); }
+
+function fieldView(name, r){
+  return SCHEMA[name].map(function(f){
+    var k=f[0], v=r[k]; if (!v || f[1]==='files') return '';
+    if (f[1]==='ref') v = refLabel(f[2], v);
+    if (f[1]==='date') v = fmtDate(v);
+    var html = (f[1]==='url') ? '<a href="'+esc(v)+'" target="_blank">Obre l\'enllaç</a>' : esc(v).replace(/\n/g,'<br>');
+    return '<dt>'+esc(lbl(k))+'</dt><dd>'+html+'</dd>';
+  }).join('');
+}
+function docList(docs){
+  if (!docs.length) return '<div class="s" style="color:var(--mute)">Cap document encara.</div>';
+  return docs.map(function(d){
+    var u = docUrl(d);
+    return '<div class="doc">'+cover(d, ' ')+'<a href="#" data-open="'+esc(d['ID'])+'">'+esc(d['Títol']||'Document')+'</a>' +
+      (d['Format']?'<span class="fmt">'+esc(d['Format'])+'</span>':'') +
+      '<button class="btn" data-ed="'+esc(d['ID'])+'">Edita</button></div>';
+  }).join('');
+}
+function bindDocEdits(back){
+  Array.prototype.forEach.call(document.querySelectorAll('[data-ed]'), function(b){
+    b.onclick=function(){ showForm('Documents', find('Documents', b.dataset.ed), back); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-open]'), function(a){
+    a.onclick=function(e){ e.preventDefault(); showDetail('Documents', a.dataset.open, back); };
+  });
+}
+function obraList(list){
+  return list.length ? list.map(obraCard).join('') : '<div class="s" style="color:var(--mute)">Cap obra encara.</div>';
+}
+function bindObraCards(){
+  Array.prototype.forEach.call($('panel').querySelectorAll('.card'), function(c){
+    c.onclick=function(){ var p=c.dataset.k.split('|'); showDetail(p[0], p.slice(1).join('|')); };
+  });
+}
+
+function showDetail(name, id, prev){
+  var r = find(name, id); if (!r) return;
+  var back = function(){ showDetail(name, id, prev); };
+  var title, extra = '', actions = '<button class="btn p" id="ed">Edita</button>';
+  if (name==='Obres') {
+    title = obraLabel(r);
+    actions += '<button class="btn" id="up">Puja PDF o partitures</button><button class="btn" id="ln">Enllaça fitxer del Drive</button>';
+    extra = '<h3>Documents</h3>' + docList(docsFor('Obra', id));
+  } else if (name==='Documents') {
+    title = r['Títol'] || 'Document';
+    var u = docUrl(r);
+    if (u) actions = '<button class="btn p" id="share">Comparteix</button>' +
+      ((r['Format']==='PDF' || !r['Format']) && fileId(u) ? '<button class="btn" id="anota">Anota</button><button class="btn" id="pages">P\u00e0gines</button>' : '') + '<a class="btn" href="'+esc(u)+'" target="_blank" style="text-decoration:none">Obre al Drive</a><button class="btn" id="ed">Edita</button><button class="btn d" id="ddel">Esborra</button>';
+    var folder = (/^Carpeta: ([^\u00b7]+?)\s*(\u00b7|$)/.exec(r['Notes']||'')||[])[1];
+    if (r['Llibre']) actions += '<button class="btn" id="obook">Obre el llibre</button>';
+    else if (folder && folder!=='(arrel)') actions += '<button class="btn" id="mkbook">Agrupa la carpeta com a llibre</button>';
+    if (r['Anotacions']) extra += '<div class="hint" style="margin:-4px 0 10px">Aquesta partitura t\u00e9 anotacions teves (es veuen al mode faristol). <a href="#" id="annclr">Esborra-les</a></div>';
+    extra += '<div id="sharebox"></div>';
+    var fid = fileId(u);
+    if (fid) extra += viewerHtml(fid, r);
+  } else if (name==='Concerts') {
+    title = concertLabel(r);
+    actions += '<button class="btn p" id="cstd">Mode faristol</button><button class="btn" id="pkg">PDF \u00fanic</button><button class="btn" id="cofl">Sense connexi\u00f3</button><button class="btn" id="addd">Afegeix partitures de l\'arxiu</button><button class="btn" id="up">Puja fitxers</button><button class="btn" id="addo">Afegeix obra</button>';
+    var cds = docsFor('Concert', id);
+    extra = '<div id="cpick"></div><h3>Repertori i partitures <span class="gc">'+cds.length+'</span></h3>' +
+      (cds.length ? '<div class="grid">' + cds.map(function(d){
+        return '<div class="gi"><div data-open="'+esc(d['ID'])+'">' + cover(d) + '<div class="t">'+esc(d['T\u00edtol'])+'</div><div class="s">'+esc(d['Tipus']||'')+'</div></div>' +
+          '<button class="btn" style="margin-top:4px;padding:3px 8px;font-size:12px" data-unlink="'+esc(d['ID'])+'">Treu del concert</button></div>'; }).join('') + '</div>'
+        : '<div class="s" style="color:var(--mute)">Encara no hi ha partitures. Toca \u00abAfegeix partitures de l\'arxiu\u00bb.</div>') +
+      '<h3>Obres</h3>' + obraList(rows('Obres').filter(function(o){ return o['Concert']===id; }));
+  } else if (name==='Fagotades') {
+    title = 'Fagotada ' + r['Any'];
+    actions += '<button class="btn" id="addo">Afegeix obra</button>';
+    extra = '<h3>Repertori</h3>' + obraList(rows('Obres').filter(function(o){ return String(o['Fagotada'])===String(id); }));
+  } else {
+    title = r[KEYS[name]];
+    var k = KEYS[name];
+    extra = '<h3>Obres</h3>' + obraList(rows('Obres').filter(function(o){ return o[k]===id; }));
+  }
+  openPanel(title, '<dl>'+fieldView(name, r)+'</dl><div class="row">'+actions+'</div>'+extra, prev);
+  if ($('ed')) $('ed').onclick = function(){ showForm(name, r, back); };
+  if ($('share')) $('share').onclick = function(){ showShare(r, $('sharebox')); };
+  if ($('ddel')) $('ddel').onclick = function(){ delDoc(r); };
+  if (name==='Documents') fillPreviews(r);
+  if ($('anota')) $('anota').onclick = function(){ showStand([r], title, { draw: true, onClose: function(){ showDetail('Documents', id, prev); } }); };
+  if ($('annclr')) $('annclr').onclick = function(){
+    if (!confirm('Esborrar totes les teves anotacions d\'aquesta partitura? La partitura no es toca.')) return;
+    run('saveAnnotations', id, '').then(load).then(function(){ toast('Anotacions esborrades'); showDetail('Documents', id, prev); }).catch(function(e){ toast('Error: '+e.message); });
+  };
+  if ($('pages')) $('pages').onclick = function(){ showPages(r, back); };
+  if ($('addd')) $('addd').onclick = function(){ concertPicker(id, back); };
+  if (name==='Concerts') {
+    $('cstd').onclick = function(){ showStand(concertDocs(id), title); };
+    $('pkg').onclick = function(){ showPackage(concertDocs(id), title, back); };
+    $('cofl').onclick = function(){ showPackage(concertDocs(id), title, back, { offline: true }); };
+  }
+  Array.prototype.forEach.call($('panel').querySelectorAll('[data-unlink]'), function(b){
+    b.onclick = function(){ b.disabled = true; run('linkDocConcert', b.dataset.unlink, id, false).then(load).then(back).catch(function(e){ toast('Error: '+e.message); }); };
+  });
+  if (name==='Documents') {
+    var cs = splitTags(r['Concert']).map(function(c){ return find('Concerts', c); }).filter(Boolean);
+    if (cs.length) {
+      var ch = document.createElement('div');
+      ch.innerHTML = '<h3>Concerts</h3>' + cs.map(function(c){ return card(concertLabel(c), [c['Lloc'], c['Poblaci\u00f3']].filter(Boolean).join(' \u00b7 '), '', 'Concerts|'+c['ID']); }).join('');
+      $('sharebox').parentNode.insertBefore(ch, $('sharebox'));
+      Array.prototype.forEach.call(ch.querySelectorAll('.card'), function(c){ c.onclick = function(){ showDetail('Concerts', c.dataset.k.split('|')[1]); }; });
+    }
+  }
+  if ($('obook')) $('obook').onclick = function(){ showBook(r['Llibre']); };
+  if ($('mkbook')) $('mkbook').onclick = function(){
+    var nn = prompt('Nom del llibre (tots els fitxers de la carpeta \u00ab'+folder+'\u00bb s\'hi agruparan):', folder.replace(/\s*parts?$/i,''));
+    if (!nn) return;
+    run('setLlibre', [], folder, nn.trim()).then(function(n){ return load().then(function(){ toast(n+' fitxers agrupats'); showBook(nn.trim()); }); })
+      .catch(function(e){ toast('Error: '+e.message); });
+  };
+  if ($('up')) $('up').onclick = function(){ showUpload(name==='Obres'?{Obra:id}:{Concert:id}, back); };
+  if ($('ln')) $('ln').onclick = function(){ showForm('Documents', {Obra:id}, back); };
+  if ($('addo')) $('addo').onclick = function(){
+    var pre = {}; if (name==='Concerts'){ pre['Concert']=id; pre['Agrupació']=r['Agrupació']; pre['Director/a']=r['Director/a']; pre['Àmbit']='Concert'; }
+    else { pre['Fagotada']=id; pre['Àmbit']='Fagotada'; pre['Agrupació']='Fagotada'; }
+    showForm('Obres', pre, back);
+  };
+  bindDocEdits(back); bindObraCards();
+}
+
+function chipOptions(src){
+  var t = src.slice(0,1), n = src.slice(2);
+  if (t==='F') return n ? (D.Llistes['Formació: '+n]||[]).slice() : [];
+  if (t==='L') return (D.Llistes[n]||[]).slice();
+  var vals = rows(n).map(function(r){ return String(r[KEYS[n]]); }).filter(Boolean);
+  if (n==='Fagotades') vals.sort().reverse();
+  else if (n!=='Agrupacions') vals.sort(function(a,b){ return norm(a).localeCompare(norm(b)); });
+  return vals.filter(function(x){ return x!=='Desconeguda'; });
+}
+function splitTags(v){ return String(v||'').split(/\s*,\s*/).filter(Boolean); }
+function chipsHtml(k, src, v, multi){
+  var opts = chipOptions(src);
+  if (multi) {
+    var sel = splitTags(v);
+    sel.forEach(function(x){ if (opts.indexOf(x)===-1) opts.push(x); });
+    return '<div class="chips" data-k="'+esc(k)+'" data-multi="1" data-val="'+esc(sel.join(', '))+'" data-src="'+esc(src)+'">' +
+      opts.map(function(o){ return '<button type="button" class="chip'+(sel.indexOf(o)!==-1?' on':'')+'" data-v="'+esc(o)+'">'+esc(o)+'</button>'; }).join('') +
+      '<button type="button" class="chip add">+ Afegeix</button></div>';
+  }
+  if (src==='F:' && !v) return '<div class="chips" data-k="'+esc(k)+'" data-val="" data-src="F:"><span class="hint">Tria primer la categoria.</span></div>';
+  if (v && opts.indexOf(v)===-1) opts.push(v);
+  return '<div class="chips" data-k="'+esc(k)+'" data-val="'+esc(v||'')+'" data-src="'+esc(src)+'">' +
+    opts.map(function(o){ return '<button type="button" class="chip'+(o===v?' on':'')+'" data-v="'+esc(o)+'">'+esc(o)+'</button>'; }).join('') +
+    '<button type="button" class="chip add">+ Afegeix</button></div>';
+}
+function inputFor(f, v, r){
+  var k=f[0], t=f[1], id='f_'+k.replace(/\W/g,'_');
+  var opts;
+  if (t==='multi') {
+    return '<label>'+esc(lbl(k))+'</label>' + (HINTS[k]?'<div class="hint">'+esc(HINTS[k])+'</div>':'') + chipsHtml(k, f[2], v, true);
+  }
+  if (t==='chips') {
+    var src = f[2]==='F:' ? 'F:'+((r&&r['Categoria'])||'') : f[2];
+    return '<label>'+esc(lbl(k))+'</label>' + (HINTS[k]?'<div class="hint">'+esc(HINTS[k])+'</div>':'') + chipsHtml(k, src, v);
+  }
+  if (t==='files') {
+    return '<div class="sect"><h3>Partitures i fitxers</h3>' +
+      '<label>'+esc(lbl('__tipus'))+'</label>' + chipsHtml('__tipus', 'L:Tipus document', f[2], true) +
+      '<div class="dropz" id="fdrop">Arrossega aqu\u00ed els PDF, MusicXML, MuseScore, Notion o \u00e0udios, o<br><button class="btn" id="faddf" type="button">Afegeix fitxers</button>' +
+      '<div class="hint" style="margin-top:6px">Pots tornar a tocar \u00abAfegeix fitxers\u00bb per afegir-ne d\'altres carpetes.</div>' +
+      '<input type="file" id="ffiles" multiple style="display:none" ' +
+      'accept=".pdf,.xml,.musicxml,.mxl,.mscz,.mscx,.notion,.musx,.mus,.sib,.dorico,.mid,.midi,.ly,.gp,.gpx,audio/*,image/*,application/pdf"></div><div class="lst" id="fflist"></div><div id="fprog" class="hint" style="margin-top:8px"></div></div>';
+  }
+  if (t==='list') {
+    opts = (D.Llistes[f[2]]||[]);
+    return '<label>'+esc(lbl(k))+'</label><select data-k="'+esc(k)+'"><option value=""></option>' +
+      opts.map(function(o){ return '<option'+(o===v?' selected':'')+'>'+esc(o)+'</option>'; }).join('') + '</select>';
+  }
+  if (t==='ref') {
+    var rs = rows(f[2]).slice();
+    if (f[2]==='Concerts') rs.sort(function(a,b){ return String(b['Data']).localeCompare(String(a['Data'])); });
+    return '<label>'+esc(lbl(k))+'</label><select data-k="'+esc(k)+'"><option value=""></option>' +
+      rs.map(function(r){ var key=r[KEYS[f[2]]]; return '<option value="'+esc(key)+'"'+(String(key)===String(v)?' selected':'')+'>'+esc(refLabel(f[2], key))+'</option>'; }).join('') + '</select>';
+  }
+  if (t==='name') {
+    return '<label>'+esc(lbl(k))+'</label><input data-k="'+esc(k)+'" list="'+id+'" value="'+esc(v)+'" autocomplete="off"><datalist id="'+id+'">' +
+      rows(f[2]).map(function(r){ return '<option value="'+esc(r[KEYS[f[2]]])+'">'; }).join('') + '</datalist>';
+  }
+  if (t==='comp') {
+    var comps = uniq(rows('Obres').map(function(o){ return o['Compositor']; }).concat(rows('Documents').map(function(d){ return d['Compositor']; })));
+    return '<label>'+esc(lbl(k))+' <b style="color:var(--blue-ink)">*</b></label><div class="hint">'+esc(HINTS[k])+'</div><input data-k="'+esc(k)+'" list="'+id+'" value="'+esc(v)+'" autocomplete="off" placeholder="Ex.: Mozart, Weissenborn, Popular...">' +
+      '<datalist id="'+id+'">' + comps.map(function(c){ return '<option value="'+esc(c)+'">'; }).join('') + '</datalist>';
+  }
+  if (t==='book') {
+    return '<label>'+esc(lbl(k))+'</label><div class="hint">'+esc(HINTS[k])+'</div><input data-k="'+esc(k)+'" list="'+id+'" value="'+esc(v)+'" autocomplete="off" placeholder="Sense llibre"><datalist id="'+id+'">' +
+      uniq(rows('Documents').map(function(d){ return d['Llibre']; })).map(function(b){ return '<option value="'+esc(b)+'">'; }).join('') + '</datalist>';
+  }
+  if (t==='area') return '<label>'+esc(lbl(k))+'</label><textarea data-k="'+esc(k)+'">'+esc(v)+'</textarea>';
+  if (t==='check') return '<label class="chk"><input type="checkbox" data-k="'+esc(k)+'"'+(v?' checked':'')+'> '+esc(k)+'</label>';
+  var type = {number:'number', date:'date', time:'time', url:'url'}[t] || 'text';
+  return '<label>'+esc(lbl(k))+'</label><input type="'+type+'" data-k="'+esc(k)+'" value="'+esc(v)+'"'+(t==='number'?' inputmode="decimal"':'')+'>';
+}
+
+function chipsVal(root, k){
+  var el = root.querySelector('.chips[data-k="'+k+'"]'); return el ? (el.dataset.val||'') : null;
+}
+function updateVis(root){
+  Array.prototype.forEach.call(root.querySelectorAll('.fld[data-showif]'), function(fd){
+    var ok = fd.dataset.showif.split(';').some(function(rule){
+      var m = /^(.+?)([=~])(.*)$/.exec(rule); if (!m) return false;
+      var cur = chipsVal(root, m[1]) || '', allowed = m[3].split('|');
+      if (m[2]==='~') { var tags = splitTags(cur); return allowed.some(function(a){ return tags.indexOf(a)!==-1; }); }
+      return allowed.indexOf(cur)!==-1;
+    });
+    var own = fd.querySelector('[data-k]'); var ownVal = own ? (own.dataset.val || own.value || '') : '';
+    fd.hidden = !(ok || ownVal);
+  });
+  // Formaci\u00f3: s'amaga si la categoria no t\u00e9 subdivisions (p. ex. Orquestra)
+  var fb = root.querySelector('.chips[data-k="Formaci\u00f3"]');
+  if (fb) { var fd2 = fb.closest('.fld'); var cat = chipsVal(root, 'Categoria');
+    fd2.hidden = !!cat && !fb.querySelector('.chip[data-v]') && !fb.dataset.val; }
+}
+function toggleChip(box, v){
+  if (!box.dataset.multi) { selectChip(box, box.dataset.val===v ? '' : v); return; }
+  var sel = splitTags(box.dataset.val), i = sel.indexOf(v);
+  if (i===-1) sel.push(v); else sel.splice(i,1);
+  box.dataset.val = sel.join(', ');
+  Array.prototype.forEach.call(box.querySelectorAll('.chip[data-v]'), function(c){ c.classList.toggle('on', sel.indexOf(c.dataset.v)!==-1); });
+}
+function selectChip(box, v){
+  if (box.dataset.multi) { var sel = splitTags(box.dataset.val); if (sel.indexOf(v)===-1) toggleChip(box, v); return; }
+  box.dataset.val = v;
+  Array.prototype.forEach.call(box.querySelectorAll('.chip[data-v]'), function(c){ c.classList.toggle('on', c.dataset.v===v); });
+}
+function bindBox(box, root){
+  box.addEventListener('click', function(e){
+    var c = e.target.closest('.chip'); if (!c) return;
+    e.preventDefault();
+    if (c.classList.contains('add')) {
+      var ab = document.createElement('div'); ab.className='addbox';
+      ab.innerHTML = '<input placeholder="Nou valor..."><button type="button" class="chip on">Afegeix</button>';
+      c.replaceWith(ab);
+      var inp = ab.querySelector('input'); inp.focus();
+      var done = function(){
+        var v = inp.value.trim();
+        var addBtn = document.createElement('button'); addBtn.type='button'; addBtn.className='chip add'; addBtn.textContent='+ Afegeix';
+        if (v) {
+          var ex = Array.prototype.filter.call(box.querySelectorAll('.chip[data-v]'), function(x){ return x.dataset.v===v; })[0];
+          if (!ex) { ex = document.createElement('button'); ex.type='button'; ex.className='chip'; ex.dataset.v=v; ex.textContent=v; box.insertBefore(ex, ab); }
+          selectChip(box, v); chipChanged(box, root);
+        }
+        ab.replaceWith(addBtn); updateVis(root);
+      };
+      ab.querySelector('button').onclick = done;
+      inp.onkeydown = function(ev){ if (ev.key==='Enter'){ ev.preventDefault(); done(); } };
+      return;
+    }
+    if (!c.dataset.v) return;
+    toggleChip(box, c.dataset.v);
+    chipChanged(box, root);
+    updateVis(root);
+  });
+}
+function chipChanged(box, root){
+  if (box.dataset.k !== 'Categoria') return;
+  var fb = root.querySelector('.chips[data-k="Formaci\u00f3"]'); if (!fb) return;
+  var cat = box.dataset.val || '';
+  var tmp = document.createElement('div');
+  tmp.innerHTML = cat ? chipsHtml('Formaci\u00f3', 'F:'+cat, '') : chipsHtml('Formaci\u00f3', 'F:', '');
+  var nb = tmp.firstChild; fb.replaceWith(nb); bindBox(nb, root); updateVis(root);
+}
+function bindChips(root){
+  Array.prototype.forEach.call(root.querySelectorAll('.chips'), function(box){ bindBox(box, root); });
+  updateVis(root);
+}
+function uploadFiles(files, meta, progEl){
+  var i = 0;
+  function next(){
+    if (i >= files.length) return Promise.resolve();
+    var file = files[i++];
+    if (progEl) progEl.textContent = 'Pujant '+i+' de '+files.length+': '+file.name;
+    return new Promise(function(res, rej){
+      var rd = new FileReader();
+      rd.onload = function(){ res(rd.result.split(',')[1]); };
+      rd.onerror = rej; rd.readAsDataURL(file);
+    }).then(function(b64){
+      var mm = {}; for (var k in meta) mm[k]=meta[k];
+      return run('uploadFile', { name:file.name, mimeType:file.type, data:b64, meta:mm });
+    }).then(next);
+  }
+  return next();
+}
+
+// Revisi\u00f3 sistem\u00e0tica: va obrint un per un els documents que encara no has revisat (agrupats per carpeta)
+function reviewNext(){
+  S.revSkip = S.revSkip || {};
+  var q = rows('Documents').filter(function(d){ return !d['Revisat'] && !S.revSkip[d['ID']]; });
+  var key = function(d){ return norm(((d['Notes']||'').match(/Carpeta: ([^\u00b7]*)/) || [,''])[1] + ' ' + (d['Llibre']||'') + ' ' + d['T\u00edtol']); };
+  q.sort(function(a,b){ return key(a).localeCompare(key(b)); });
+  if (!q.length) { closePanel(); toast('No queda res per revisar'); render(); return; }
+  showForm('Documents', q[0], function(){ closePanel(); render(); }, { review: q.length });
+}
+function showForm(name, r, back, opts){
+  r = r || {}; opts = opts || {};
+  var isNew = !r[KEYS[name]] || (name==='Obres' && !r['ID']) || (name==='Documents' && !r['ID']);
+  if (name==='Agrupacions' || name==='Directors' || name==='Fagotades') isNew = !find(name, r[KEYS[name]]);
+  var body = '<div class="f">' + SCHEMA[name].map(function(f){ return '<div class="fld"'+(f[3]?' data-showif="'+esc(f[3])+'"':'')+'>'+inputFor(f, r[f[0]]||'', r)+'</div>'; }).join('') + '</div>' +
+    (opts.review ? '<div class="row"><button class="btn p" id="sv">Desa i seg\u00fcent</button><button class="btn" id="rvskip">Salta</button>' + (!isNew?'<button class="btn d" id="del">Elimina</button>':'') + '</div>'
+      : '<div class="row"><button class="btn p" id="sv">Desa</button>' + (!isNew?'<button class="btn d" id="del">Elimina</button>':'') + '</div>');
+  var fem = (name==='Obres'||name==='Agrupacions'||name==='Fagotades');
+  var pd = name==='Documents' ? r : (name==='Obres' && r['ID'] ? firstDoc('Obra', r['ID']) : null);
+  var pid = pd ? fileId(docUrl(pd)) : '';
+  if (pid) body = '<details class="edprev" open><summary>Portada del PDF</summary>' +
+    viewerHtml(pid, pd) +
+    (pd['T\u00edtol'] ? '<div class="hint" style="margin-top:6px">Nom del fitxer: '+esc(pd['T\u00edtol'])+'</div>' : '') + '</details>' + body;
+  if (opts.review) body = '<div class="hint" style="margin-bottom:8px">Revisi\u00f3: en queden <b>'+opts.review+'</b>. Omple el que falti i toca \u00abDesa i seg\u00fcent\u00bb.' +
+    ((r['Notes']||'').indexOf('Carpeta:') === 0 ? '<br>' + esc((r['Notes'].match(/Carpeta: ([^\u00b7]*)/)||[,''])[1]) : '') + '</div>' + body;
+  openPanel(opts.review ? 'Revisi\u00f3' : isNew ? (fem?'Nova ':'Nou ') + SINGULAR[name] : 'Edita', body, back);
+  if (pd) fillPreviews(pd);
+  if ($('rvskip')) $('rvskip').onclick = function(){ S.revSkip[r['ID']] = 1; reviewNext(); };
+  bindChips($('panel'));
+  FPICK = $('ffiles') ? filePicker('faddf', 'ffiles', 'fflist', 'fdrop') : null;
+  $('sv').onclick = function(){
+    var o = {};
+    if (!isNew) { o[KEYS[name]] = r[KEYS[name]]; o.__orig = r[KEYS[name]]; }
+    Array.prototype.forEach.call($('panel').querySelectorAll('[data-k]'), function(el){
+      o[el.dataset.k] = el.classList.contains('chips') ? (el.dataset.val||'') :
+        el.type==='checkbox' ? (el.checked?'Sí':'') : String(el.value||'').trim();
+    });
+    var tipus = o['__tipus']; delete o['__tipus'];
+    var files = $('ffiles') ? (FPICK || []).slice() : [];
+    if (name==='Concerts' && !o['Data']) { toast('Posa la data del concert perqu\u00e8 surti a Inici'); return; }
+    if (name==='Obres' && !o['Obra'] && !o['Compositor']) { toast('Posa almenys el títol de l\'obra o el compositor'); return; }
+    if (name==='Documents') o['Revisat'] = 'S\u00ed';
+    // Edici\u00f3 d'un registre existent sense fitxers: es desa en segon pla i es continua de seguida
+    if (!isNew && !files.length) {
+      var payload = JSON.parse(JSON.stringify(o));
+      Object.keys(o).forEach(function(k){ if (k.indexOf('__') !== 0) r[k] = o[k]; });
+      addLocalLabels(name, o);
+      bgSave(name, payload, r);
+      if (opts.review) { S.revSkip[r['ID']] = 1; reviewNext(); } else showDetail(name, r[KEYS[name]]);
+      return;
+    }
+    $('sv').disabled = true; $('sv').textContent = 'Desant...';
+    run('saveRow', name, o).then(function(newId){
+      var meta = { 'Tipus': tipus || '' }; meta[name==='Concerts' ? 'Concert' : 'Obra'] = newId;
+      return (files.length ? uploadFiles(files, meta, $('fprog')) : Promise.resolve())
+        .then(function(){ return load(); })
+        .then(function(){ toast(files.length ? 'Desat amb '+files.length+(files.length>1?' fitxers':' fitxer') : 'Desat'); if (opts.review) { S.revSkip[r['ID']] = 1; reviewNext(); } else showDetail(name, newId); });
+    })
+      .catch(function(e){ $('sv').disabled=false; $('sv').textContent='Desa'; toast('Error: '+e.message); });
+  };
+  if ($('del')) $('del').onclick = function(){
+    if (name==='Documents') { delDoc(r); return; }
+    if (!confirm('Eliminar aquest registre?')) return;
+    run('deleteRow', name, r[KEYS[name]]).then(load).then(function(){ toast('Eliminat'); closePanel(); })
+      .catch(function(e){ toast('Error: '+e.message); });
+  };
+}
+
+/* Desat en segon pla (cua): l'app no espera el servidor per passar al seg\u00fcent */
+var SAVEQ = Promise.resolve(), SAVEN = 0;
+function bgSave(name, o, r){
+  SAVEN++; saveBadge();
+  SAVEQ = SAVEQ.then(function(){ return run('saveRow', name, o); })
+    .then(function(){ SAVEN--; saveBadge(); },
+      function(e){ SAVEN--; saveBadge(); toast('No s\'ha pogut desar \u00ab' + (r['T\u00edtol'] || r['Obra'] || r[KEYS[name]]) + '\u00bb: ' + (e.message || e) + '. Torna-ho a provar.'); });
+}
+function saveBadge(){
+  var b = $('savebadge');
+  if (!b) { b = document.createElement('div'); b.id = 'savebadge'; b.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:60;background:var(--ink);color:var(--paper);font-size:12px;padding:5px 10px;border-radius:12px;opacity:.85;pointer-events:none'; document.body.appendChild(b); }
+  b.textContent = SAVEN > 0 ? 'Desant ' + SAVEN + '...' : '';
+  b.style.display = SAVEN > 0 ? 'block' : 'none';
+}
+window.addEventListener('beforeunload', function(e){ if (SAVEN > 0) { e.preventDefault(); e.returnValue = ''; } });
+function addLocalLabels(name, o){
+  (SCHEMA[name] || []).forEach(function(f){
+    if (!f[2] || String(f[2]).indexOf('L:') !== 0 || !o[f[0]]) return;
+    var ln = f[2].slice(2), list = D.Llistes[ln] = D.Llistes[ln] || [];
+    String(o[f[0]]).split(/\s*,\s*/).filter(String).forEach(function(v){ if (list.indexOf(v) === -1) list.push(v); });
+  });
+}
+
+/* Bot\u00f3 Actualitza: torna a carregar l'app sencera (codi nou i dades noves) */
+(function(){
+  var b = document.getElementById('reload');
+  if (!b) return;
+  b.onclick = function(){
+    if (typeof SAVEN !== 'undefined' && SAVEN > 0) { toast('Espera que acabi de desar...'); return; }
+    b.classList.add('busy');
+    if (D && D.url) { try { if (window.open(D.url, '_top')) return; } catch (e) {} }
+    load().then(function(){ render(); toast('Actualitzat'); }).catch(function(e){ toast('Error: ' + e.message); })
+      .then(function(){ b.classList.remove('busy'); });
+  };
+})();
+
+/* Llista de fitxers que es va omplint: es poden afegir fitxers de diverses carpetes o arrossegant-los */
+var FPICK = null;
+function filePicker(btnId, inputId, listId, dropId, onChange){
+  var picked = [];
+  function draw(){
+    $(listId).innerHTML = picked.map(function(f, i){
+      return '<div class="lrow" style="cursor:default"><div class="body"><div class="t">'+esc(f.name)+'</div><div class="s">'+(f.size/1048576).toFixed(1)+' MB</div></div>' +
+        '<button class="btn" type="button" data-rm="'+i+'" style="padding:3px 9px;font-size:12px">Treu</button></div>'; }).join('');
+    Array.prototype.forEach.call($(listId).querySelectorAll('[data-rm]'), function(b){ b.onclick = function(){ picked.splice(+b.dataset.rm, 1); draw(); }; });
+    if (onChange) onChange(picked);
+  }
+  function add(list){
+    Array.prototype.forEach.call(list, function(f){ if (!picked.some(function(x){ return x.name === f.name && x.size === f.size; })) picked.push(f); });
+    draw();
+  }
+  $(btnId).onclick = function(){ $(inputId).click(); };
+  $(inputId).onchange = function(){ add(this.files); this.value = ''; };
+  var dz = $(dropId);
+  dz.ondragover = function(e){ e.preventDefault(); dz.classList.add('on'); };
+  dz.ondragleave = function(){ dz.classList.remove('on'); };
+  dz.ondrop = function(e){ e.preventDefault(); dz.classList.remove('on'); if (e.dataTransfer && e.dataTransfer.files) add(e.dataTransfer.files); };
+  return picked;
+}
+
+function showUpload(meta, back){
+  meta = meta || {};
+  var body = '<div class="f">' +
+    inputFor(['Tipus','multi','L:Tipus document'], meta['Tipus']||'Particel·la') +
+    (meta['Obra']===undefined && meta['Concert']===undefined ? inputFor(['Obra','ref','Obres'], '') : '') +
+    '<label>Fitxers (PDF, MusicXML, MuseScore, Notion, àudio...)</label>' +
+    '<div class="dropz" id="dropz">Arrossega aqu\u00ed els fitxers o<br><button class="btn" id="addf" type="button">Afegeix fitxers</button>' +
+    '<div class="hint" style="margin-top:6px">Pots tornar a tocar \u00abAfegeix fitxers\u00bb per afegir-ne d\'altres carpetes.</div>' +
+    '<input type="file" id="files" multiple style="display:none"></div><div class="lst" id="flist"></div>' +
+    '</div><div class="row"><button class="btn p" id="go">Puja</button></div><div id="prog" class="s"></div>';
+  openPanel('Puja fitxers', body, back);
+  bindChips($('panel'));
+  var picked = [];
+  function drawPicked(){
+    $('flist').innerHTML = picked.map(function(f, i){
+      return '<div class="lrow" style="cursor:default"><div class="body"><div class="t">'+esc(f.name)+'</div><div class="s">'+(f.size/1048576).toFixed(1)+' MB</div></div>' +
+        '<button class="btn" data-rm="'+i+'" style="padding:3px 9px;font-size:12px">Treu</button></div>'; }).join('');
+    Array.prototype.forEach.call($('flist').querySelectorAll('[data-rm]'), function(b){ b.onclick = function(){ picked.splice(+b.dataset.rm, 1); drawPicked(); }; });
+    $('go').textContent = picked.length ? 'Puja ' + picked.length + (picked.length > 1 ? ' fitxers' : ' fitxer') : 'Puja';
+  }
+  function addFiles(list){
+    Array.prototype.forEach.call(list, function(f){
+      if (!picked.some(function(x){ return x.name === f.name && x.size === f.size; })) picked.push(f); });
+    drawPicked();
+  }
+  $('addf').onclick = function(){ $('files').click(); };
+  $('files').onchange = function(){ addFiles(this.files); this.value = ''; };
+  var dz = $('dropz');
+  dz.ondragover = function(e){ e.preventDefault(); dz.classList.add('on'); };
+  dz.ondragleave = function(){ dz.classList.remove('on'); };
+  dz.ondrop = function(e){ e.preventDefault(); dz.classList.remove('on'); if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files); };
+  $('go').onclick = function(){
+    var files = picked.slice();
+    if (!files.length) { toast('Tria algun fitxer'); return; }
+    var m = {}; for (var k in meta) m[k]=meta[k];
+    Array.prototype.forEach.call($('panel').querySelectorAll('[data-k]'), function(el){
+      var v = el.classList.contains('chips') ? el.dataset.val : el.value; if (v) m[el.dataset.k]=v; });
+    $('go').disabled = true;
+    var i = 0;
+    function next(){
+      if (i >= files.length) { $('prog').textContent='Fet.'; return load().then(function(){ toast(files.length+' fitxers pujats'); (back||closePanel)(); }); }
+      var file = files[i++];
+      $('prog').textContent = 'Pujant '+i+' de '+files.length+': '+file.name;
+      return new Promise(function(res, rej){
+        var rd = new FileReader();
+        rd.onload = function(){ res(rd.result.split(',')[1]); };
+        rd.onerror = rej; rd.readAsDataURL(file);
+      }).then(function(b64){
+        var mm = {}; for (var k in m) mm[k]=m[k];
+        return run('uploadFile', { name:file.name, mimeType:file.type, data:b64, meta:mm });
+      }).then(next);
+    }
+    next().catch(function(e){ $('go').disabled=false; toast('Error: '+e.message); });
+  };
+}
+
+/* ---------- Revisió de l'inventari ---------- */
+function showReview(){
+  openPanel('Revisa els pendents', '<div class="loading">Carregant...</div>', function(){ closePanel(); });
+  run('getInventariRows').then(function(list){
+    var b = $('panel').querySelector('.pb');
+    if (!list.length) { b.innerHTML = '<div class="empty">No queda res per revisar.</div>'; return; }
+    b.innerHTML = '<div class="hint" style="margin-bottom:12px">'+list.length+' fitxers que pel nom no semblaven música. '+
+      'Toca <b>Sí</b> per afegir-los a l\'arxiu o <b>No</b> per descartar-los (es queden al Drive igualment).</div>' +
+      list.map(function(r){ var d = {'Enllaç Drive': r.url, 'Format': r.fmt, 'Títol': r.t};
+        return '<div class="doc rv" data-id="'+esc(r.id)+'">'+cover(d, ' ')+'<div style="flex:1;min-width:0"><a href="'+esc(r.url)+'" target="_blank">'+esc(r.t)+'</a>'+
+          '<div class="hint" style="margin:2px 0 0">'+esc(r.folder||'')+'</div></div>'+
+          '<button class="btn p" data-y="1">Sí</button><button class="btn" data-y="0">No</button></div>'; }).join('');
+    Array.prototype.forEach.call(b.querySelectorAll('.rv button'), function(btn){
+      btn.onclick = function(){
+        var row = btn.closest('.rv'); row.style.opacity = .4;
+        Array.prototype.forEach.call(row.querySelectorAll('button'), function(x){ x.disabled = true; });
+        run('decideInventari', row.dataset.id, btn.dataset.y==='1').then(function(){ row.remove(); toast(btn.dataset.y==='1' ? 'Afegit a l\'arxiu' : 'Descartat'); })
+          .catch(function(e){ row.style.opacity = 1; toast('Error: '+e.message); });
+      };
+    });
+  }).catch(function(e){ toast('Error: '+e.message); });
+}
+
+/* ---------- Compartir ---------- */
+function showShare(d, box){
+  var id = fileId(docUrl(d)); if (!id) { toast('Aquest document no té fitxer'); return; }
+  box.innerHTML = '<div class="share"><div class="hint">Preparant...</div></div>';
+  var prepared = null;
+  run('getShareInfo', id).then(function(info){
+    var title = d['Títol'] || info.name;
+    var linkHtml = function(url){
+      var txt = title + ' – ' + url;
+      return '<div class="srow">' +
+        '<a class="btn" target="_blank" href="https://wa.me/?text='+encodeURIComponent(txt)+'">WhatsApp</a>' +
+        '<a class="btn" target="_blank" href="https://t.me/share/url?url='+encodeURIComponent(url)+'&text='+encodeURIComponent(title)+'">Telegram</a>' +
+        '<a class="btn" target="_blank" href="mailto:?subject='+encodeURIComponent(title)+'&body='+encodeURIComponent(txt)+'">Correu</a>' +
+        '<button class="btn" id="cplink">Copia l\'enllaç</button></div>';
+    };
+    var canFile = !!(navigator.share && navigator.canShare) && info.size <= 20*1024*1024;
+    var h = '<div class="share"><h3>Comparteix</h3>';
+    if (canFile) h += '<div class="hint">Envia el PDF directament (WhatsApp, Telegram, Correu, AirDrop...):</div>' +
+      '<div class="srow"><button class="btn p" id="shfile" disabled>Preparant el fitxer...</button></div>';
+    h += '<div class="hint" style="margin-top:12px">O envia un enllaç per obrir-lo:</div>';
+    if (info.isPublic) h += linkHtml(info.url);
+    else if (info.canLink) h += '<div class="srow"><button class="btn" id="mkpub">Activa l\'enllaç per compartir</button></div>' +
+      '<div class="hint">Qualsevol persona amb l\'enllaç podrà veure aquest fitxer (no editar-lo).</div>';
+    else h += '<div class="hint">Aquest fitxer és d\'una altra persona: només el pots enviar com a fitxer.</div>';
+    h += '<div class="srow" style="margin-top:12px"><a class="btn" target="_blank" href="https://drive.google.com/uc?export=download&id='+id+'">Descarrega</a></div>';
+    if (d['Anotacions']) h += '<div class="hint" style="margin-top:14px">Aquesta partitura t\u00e9 anotacions teves. L\'enll\u00e7 i la desc\u00e0rrega s\u00f3n sempre sense anotacions.</div>' +
+      (canFile ? '<label class="chk" style="display:flex;gap:8px;align-items:center;color:var(--ink);margin-top:6px"><input type="checkbox" id="shann" style="width:20px;height:20px"> Envia el PDF amb les meves anotacions</label>' : '') +
+      '<div class="srow"><button class="btn" id="shannlink">Fes una c\u00f2pia amb anotacions i comparteix-la</button></div><div id="shannlinks"></div>';
+    h += '</div>';
+    box.innerHTML = h;
+    var annFile = null;
+    if ($('shannlink')) $('shannlink').onclick = function(){
+      var bb = this; bb.disabled = true; bb.textContent = 'Preparant...';
+      run('getPdfForEdit', id).then(function(fd){ return annotatedBytes(d, b64ToBytes(fd.data)); })
+        .then(function(by){ return run('savePackage', bytesToB64(by), (title + ' (anotat).pdf')); })
+        .then(function(r){ return run('makePublicLink', r.id); })
+        .then(function(link){ bb.textContent = 'C\u00f2pia desada a Arxiu de Repertori / Paquets'; $('shannlinks').innerHTML = shareLinks(title + ' (anotat)', link); })
+        .catch(function(e){ bb.disabled = false; bb.textContent = 'Fes una c\u00f2pia amb anotacions i comparteix-la'; toast('Error: ' + e.message); });
+    };
+    var bindLinks = function(url){
+      if ($('cplink')) $('cplink').onclick = function(){
+        (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(function(){ toast('Enllaç copiat'); })
+          .catch(function(){ prompt('Copia l\'enllaç:', url); });
+      };
+    };
+    bindLinks(info.url);
+    if ($('mkpub')) $('mkpub').onclick = function(){
+      $('mkpub').disabled = true; $('mkpub').textContent = 'Activant...';
+      run('makePublicLink', id).then(function(url){
+        var row = $('mkpub').parentNode; var hint = row.nextSibling;
+        if (hint && hint.classList && hint.classList.contains('hint')) hint.remove();
+        var tmp = document.createElement('div'); tmp.innerHTML = linkHtml(url); row.replaceWith(tmp.firstChild); bindLinks(url);
+      }).catch(function(e){ toast('Error: '+e.message); $('mkpub').disabled = false; });
+    };
+    if (canFile) {
+      run('getFileData', id).then(function(fd){
+        var bin = atob(fd.data), arr = new Uint8Array(bin.length);
+        for (var i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
+        var name = /\.[a-z0-9]{2,5}$/i.test(fd.name) ? fd.name : fd.name + '.pdf';
+        prepared = new File([arr], name, { type: fd.mime });
+        var b = $('shfile'); if (!b) return;
+        if (!navigator.canShare({ files: [prepared] })) { b.textContent = 'El navegador no permet enviar fitxers'; return; }
+        b.disabled = false; b.textContent = 'Envia el PDF';
+        if ($('shann')) $('shann').onchange = function(){
+          if (!this.checked || annFile) return;
+          b.disabled = true; b.textContent = 'Afegint anotacions...';
+          annotatedBytes(d, arr).then(function(by){ annFile = new File([by], name.replace(/\.pdf$/i, '') + ' (anotat).pdf', { type: 'application/pdf' }); b.disabled = false; b.textContent = 'Envia el PDF'; })
+            .catch(function(e){ b.disabled = false; b.textContent = 'Envia el PDF'; toast('Error: ' + e.message); });
+        };
+        b.onclick = function(){
+          var f = ($('shann') && $('shann').checked && annFile) ? annFile : prepared;
+          navigator.share({ files: [f], title: title }).catch(function(e){
+            if (e && e.name !== 'AbortError') toast('No s\'ha pogut obrir el menú de compartir: fes servir l\'enllaç');
+          });
+        };
+      }).catch(function(e){ var b = $('shfile'); if (b) b.textContent = e.message || 'No s\'ha pogut preparar'; });
+    }
+  }).catch(function(e){ box.innerHTML = '<div class="hint">Error: '+esc(e.message)+'</div>'; });
+}
+
+/* ---------- Botó afegir ---------- */
+function showTools(){
+    openPanel('Afegeix document',
+      '<div class="row"><button class="btn p" id="a1">Puja fitxers</button><button class="btn" id="a2">Enllaça un fitxer del Drive</button></div>' +
+      '<h3>Inventari del Drive</h3><div class="s" style="color:var(--mute)">Busca al teu Drive tots els PDFs i fitxers de partitura nous i els afegeix a l\'arxiu amb el seu enllaç. No mou cap fitxer.</div>' +
+      '<div class="row"><button class="btn" id="a3">Fes l\'inventari</button><button class="btn" id="a4">Revisa els pendents</button><button class="btn" id="a5">Classifica automàticament</button></div><div id="invmsg" class="s"></div>');
+    $('a4').onclick=function(){ showReview(); };
+    $('a5').onclick=function(){
+      $('invmsg').textContent='Classificant...';
+      run('classificaDocuments').then(function(m){ $('invmsg').textContent=m; return load(); }).catch(function(e){ $('invmsg').textContent='Error: '+e.message; });
+    };
+    $('a3').onclick=function(){
+      var b=$('a3'); b.disabled=true;
+      (function step(){
+        $('invmsg').textContent='Revisant el Drive...';
+        run('inventari').then(function(m){
+          $('invmsg').textContent=m;
+          if (/parcial/.test(m)) return step();
+          b.disabled=false; return load();
+        }).catch(function(e){ b.disabled=false; $('invmsg').textContent='Error: '+e.message; });
+      })();
+    };
+    $('a1').onclick=function(){ showUpload({}); };
+    if ($('a2')) $('a2').onclick=function(){ showForm('Documents', {}); };
+}
+$('fab').onclick = function(){
+  var t = S.tab;
+  if (t==='Compositors') { showForm('Obres', {}); return; }
+  if (t==='Documents' || t==='Inici') {
+    showTools();
+    $('a2').onclick=function(){ showForm('Documents', {}); };
+    return;
+  }
+  if (t==='Cursos') {
+    var pre = {'Àmbit':'Pedagògic', 'Categoria':'Repertori fagotístic'};
+    if (S.centre) pre['Centre'] = S.centre;
+    if (S.centre==='Vila-seca') pre['Etiquetes'] = 'Vila-seca';
+    if (S.curs) pre['Curs'] = S.curs;
+    showForm('Obres', pre); return; }
+  if (t==='Obres' && S.f['Categoria']) { showForm('Obres', {'Categoria':S.f['Categoria'], 'Formació':S.f['Formació']||''}); return; }
+  showForm(t, {});
+};
+
+/* ---------- Editor de pàgines ---------- */
+var PDFJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+var PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+var PDFLIB_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js';
+var _libs = null;
+function loadScript(u){ return new Promise(function(res, rej){ var s=document.createElement('script'); s.src=u; s.onload=res; s.onerror=function(){ rej(new Error('No s\'ha pogut carregar el visor de PDF')); }; document.head.appendChild(s); }); }
+function pdfLibs(){
+  if (_libs) return _libs;
+  _libs = Promise.all([loadScript(PDFJS_URL), loadScript(PDFLIB_URL)]).then(function(){
+    return fetch(PDFJS_WORKER).then(function(r){ return r.text(); }).then(function(code){
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([code], {type:'text/javascript'}));
+    });
+  });
+  _libs.catch(function(){ _libs = null; });
+  return _libs;
+}
+function b64ToBytes(b){ var s=atob(b), a=new Uint8Array(s.length); for (var i=0;i<s.length;i++) a[i]=s.charCodeAt(i); return a; }
+function bytesToB64(u){ var s='', ch=0x8000; for (var i=0;i<u.length;i+=ch) s+=String.fromCharCode.apply(null, u.subarray(i,i+ch)); return btoa(s); }
+
+function rt(r){ return 'rotate('+r+'deg)' + (r % 180 ? ' scale(.72)' : ''); }
+function showPages(doc, back){
+  var fid = fileId(docUrl(doc));
+  var P = { srcs: [], pages: [], sel: {}, dirty: false, mine: true, owner: '' };
+  openPanel('Pàgines · ' + (doc['Títol']||''), '<div id="pgmsg" class="hint">Carregant el PDF...</div><div class="pg-grid" id="pgg"></div>' +
+    '<div class="pgbar" id="pgbar" style="display:none"><span class="sel" id="pgsel"></span>' +
+    '<button class="btn" id="pgrot">Gira</button><button class="btn" id="pgl">‹ Mou</button><button class="btn" id="pgr">Mou ›</button>' +
+    '<button class="btn d" id="pgdel">Treu</button><button class="btn" id="pgadd">+ Afegeix</button><button class="btn p" id="pgsave">Desa</button></div>',
+    function(){ if (P.dirty && !confirm('Sortir sense desar els canvis?')) return; (back||closePanel)(); });
+  var msg = function(t){ $('pgmsg').textContent = t; };
+
+  function addSource(bytes, label){
+    return window.pdfjsLib.getDocument({ data: bytes.slice() }).promise.then(function(pdf){
+      var si = P.srcs.length; P.srcs.push({ bytes: bytes, pdf: pdf, label: label });
+      var list = [];
+      for (var i=0;i<pdf.numPages;i++) list.push({ src: si, idx: i, rot: 0, key: si+'-'+i });
+      return list;
+    });
+  }
+  // Miniatures d'una en una, per no saturar el mòbil amb PDFs llargs
+  var queue = [], busy = false;
+  function pump(){
+    if (busy || !queue.length) return;
+    busy = true;
+    var job = queue.shift();
+    P.srcs[job.pg.src].pdf.getPage(job.pg.idx+1).then(function(p){
+      var vp0 = p.getViewport({ scale: 1 }), sc = 220 / Math.max(vp0.width, vp0.height);
+      var vp = p.getViewport({ scale: sc }), c = document.createElement('canvas');
+      c.width = vp.width; c.height = vp.height;
+      c.style.transform = rt(job.pg.rot);
+      job.el.appendChild(c);
+      return p.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+    }).catch(function(){ job.el.textContent = '?'; }).then(function(){ busy = false; pump(); });
+  }
+  var cache = {};
+  function draw(){
+    var g = $('pgg'); if (!g) return;
+    g.innerHTML = '';
+    P.pages.forEach(function(pg, i){
+      var d = document.createElement('div');
+      d.className = 'pg' + (P.sel[pg.key] ? ' on' : '') + (pg.src > 0 ? ' new' : '');
+      var pc = cache[pg.key];
+      if (!pc) { pc = document.createElement('div'); pc.className = 'pc'; queue.push({ pg: pg, el: pc }); cache[pg.key] = pc; }
+      d.appendChild(pc);
+      var cv = pc.querySelector('canvas'); if (cv) cv.style.transform = rt(pg.rot);
+      var n = document.createElement('div'); n.className = 'pn'; n.textContent = (i+1) + (pg.rot ? ' · '+pg.rot+'°' : '') + (pg.src > 0 ? ' · nova' : '');
+      d.appendChild(n);
+      d.onclick = function(){ if (P.sel[pg.key]) delete P.sel[pg.key]; else P.sel[pg.key] = 1; draw(); };
+      g.appendChild(d);
+    });
+    pump();
+    var ns = Object.keys(P.sel).length;
+    $('pgsel').textContent = P.pages.length + ' pàgines' + (ns ? ' · ' + ns + ' seleccionades' : ' · toca les pàgines per seleccionar-les') + (P.dirty ? ' · canvis sense desar' : '');
+    ['pgrot','pgl','pgr','pgdel'].forEach(function(b){ $(b).disabled = !ns; });
+    $('pgsave').disabled = !P.dirty;
+  }
+  function selIdx(){ return P.pages.map(function(p,i){ return P.sel[p.key] ? i : -1; }).filter(function(i){ return i>-1; }); }
+
+  Promise.all([pdfLibs(), run('getPdfForEdit', fid)]).then(function(a){
+    var fd = a[1]; P.mine = fd.mine; P.owner = fd.owner;
+    return addSource(b64ToBytes(fd.data), fd.name);
+  }).then(function(list){
+    P.pages = list;
+    msg(P.mine ? 'Toca les pàgines per seleccionar-les i fes servir els botons de sota. En desar, el fitxer es canvia al Drive (mateix enllaç; el Drive guarda la versió anterior).'
+               : 'Aquest PDF és de ' + P.owner + ': en desar se\'n farà una còpia teva editada i el document passarà a apuntar-hi.');
+    $('pgbar').style.display = 'flex';
+    draw();
+  }).catch(function(e){ msg('Error: ' + (e.message || e)); });
+
+  $('pgdel').onclick = function(){
+    var ix = selIdx(); if (!ix.length) return;
+    if (ix.length === P.pages.length) { toast('Ha de quedar almenys una pàgina'); return; }
+    P.pages = P.pages.filter(function(p){ return !P.sel[p.key]; }); P.sel = {}; P.dirty = true; draw();
+  };
+  $('pgrot').onclick = function(){ P.pages.forEach(function(p){ if (P.sel[p.key]) p.rot = (p.rot + 90) % 360; }); P.dirty = true; draw(); };
+  function move(dir){
+    var ix = selIdx(); if (!ix.length) return;
+    if (dir < 0 && ix[0] === 0) return; if (dir > 0 && ix[ix.length-1] === P.pages.length-1) return;
+    var arr = P.pages.slice();
+    (dir < 0 ? ix : ix.slice().reverse()).forEach(function(i){ var t = arr[i+dir]; arr[i+dir] = arr[i]; arr[i] = t; });
+    P.pages = arr; P.dirty = true; draw();
+  }
+  $('pgl').onclick = function(){ move(-1); };
+  $('pgr').onclick = function(){ move(1); };
+
+  function insertList(list){
+    var ix = selIdx(), at = ix.length ? ix[ix.length-1] + 1 : P.pages.length;
+    Array.prototype.splice.apply(P.pages, [at, 0].concat(list));
+    P.sel = {}; list.forEach(function(p){ P.sel[p.key] = 1; });
+    P.dirty = true; draw(); toast(list.length + (list.length>1 ? ' pàgines afegides' : ' pàgina afegida'));
+  }
+  $('pgadd').onclick = function(){
+    var box = document.createElement('div'); box.className = 'share'; box.id = 'pgaddbox';
+    box.innerHTML = '<h3>Afegeix pàgines</h3><div class="hint">S\'afegeixen darrere de la pàgina seleccionada (o al final).</div>' +
+      '<div class="filebox">Un PDF del mòbil o de l\'ordinador<input type="file" id="pgfile" accept="application/pdf,.pdf"></div>' +
+      '<label>O un document de l\'arxiu</label><input type="search" id="pgq" placeholder="Cerca pel nom..." style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit">' +
+      '<div class="pick" id="pgpick"></div><div class="row"><button class="btn" id="pgaddx">Tanca</button></div>';
+    var old = $('pgaddbox'); if (old) old.remove();
+    $('pgg').parentNode.insertBefore(box, $('pgg'));
+    box.scrollIntoView({ behavior: 'smooth' });
+    $('pgaddx').onclick = function(){ box.remove(); };
+    $('pgfile').onchange = function(){
+      var f = this.files[0]; if (!f) return;
+      var rd = new FileReader();
+      rd.onload = function(){ addSource(new Uint8Array(rd.result), f.name).then(function(l){ box.remove(); insertList(l); }).catch(function(e){ toast('Error: '+e.message); }); };
+      rd.readAsArrayBuffer(f);
+    };
+    $('pgq').oninput = function(){
+      var q = norm(this.value);
+      var res = q.length < 2 ? [] : rows('Documents').filter(function(d){ return fileId(docUrl(d)) && norm(d['Títol']).indexOf(q) > -1; }).slice(0, 30);
+      $('pgpick').innerHTML = res.map(function(d){ return '<div data-id="'+esc(d['ID'])+'">'+esc(d['Títol'])+'</div>'; }).join('');
+      Array.prototype.forEach.call($('pgpick').children, function(el){
+        el.onclick = function(){
+          var d = find('Documents', el.dataset.id); el.textContent = 'Carregant...';
+          run('getPdfForEdit', fileId(docUrl(d))).then(function(fd){ return addSource(b64ToBytes(fd.data), fd.name); })
+            .then(function(l){ box.remove(); insertList(l); }).catch(function(e){ toast('Error: '+e.message); });
+        };
+      });
+    };
+  };
+  $('pgsave').onclick = function(){
+    var b = $('pgsave'); b.disabled = true; b.textContent = 'Desant...';
+    var L = window.PDFLib, out;
+    L.PDFDocument.create().then(function(o){
+      out = o;
+      return Promise.all(P.srcs.map(function(s){ return L.PDFDocument.load(s.bytes, { ignoreEncryption: true }); }));
+    }).then(function(docs){
+      var chain = Promise.resolve();
+      P.pages.forEach(function(pg){
+        chain = chain.then(function(){ return out.copyPages(docs[pg.src], [pg.idx]); }).then(function(cp){
+          var p = cp[0];
+          if (pg.rot) p.setRotation(L.degrees((p.getRotation().angle + pg.rot) % 360));
+          out.addPage(p);
+        });
+      });
+      return chain;
+    }).then(function(){ return out.save(); })
+    .then(function(bytes){ return run('savePdf', fid, bytesToB64(bytes), doc['ID']); })
+    .then(function(r){
+      if (!doc['Anotacions']) return r;
+      // les anotacions segueixen les seves p\u00e0gines (les girades o esborrades es perden)
+      return run('getAnnotations', doc['ID']).then(function(s){
+        var a = null; try { a = JSON.parse(s); } catch (e) {}
+        if (!a || !a.pages) return r;
+        var na = { v: 1, pages: {} };
+        P.pages.forEach(function(pg, i){ if (pg.src === 0 && !pg.rot && a.pages[pg.idx+1]) na.pages[i+1] = a.pages[pg.idx+1]; });
+        return run('saveAnnotations', doc['ID'], Object.keys(na.pages).length ? JSON.stringify(na) : '').then(function(){ return r; });
+      });
+    })
+    .then(function(r){
+      P.dirty = false;
+      return load().then(function(){
+        toast(r.copy ? 'Desat com a còpia teva' : 'PDF desat');
+        showDetail('Documents', doc['ID'], back);
+      });
+    }).catch(function(e){ b.disabled = false; b.textContent = 'Desa'; toast('Error: ' + (e.message || e)); });
+  };
+}
+
+/* ---------- Mode faristol ---------- */
+function pdfOnly(docs){ return docs.filter(function(d){ return docKind(d)==='pdf' && fileId(docUrl(d)); }); }
+function showStand(docs, title, opts){
+  opts = opts || {};
+  docs = pdfOnly(docs);
+  if (!docs.length) { toast('No hi ha cap PDF per mostrar'); return; }
+  var st = document.createElement('div'); st.id = 'stand';
+  st.innerHTML = '<div id="stwrap"><canvas id="stc"></canvas><canvas id="sto"></canvas></div><div class="stmsg" id="stmsg"></div>' +
+    '<div class="stbar" id="stbar"><button class="btn" id="stx">Tanca</button><select id="stsel">' +
+    docs.map(function(d, i){ return '<option value="'+i+'">'+(i+1)+'. '+esc(d['Títol'])+'</option>'; }).join('') +
+    '</select><span id="stpg"></span><button class="btn" id="stpen">Llapis</button><button class="btn" id="steye" title="Mostra o amaga les anotacions">Anot.: Sí</button></div>' +
+    '<div class="sttools" id="sttools"><button class="sw on" data-col="#111111" style="background:#111"></button><button class="sw" data-col="#d0021b" style="background:#d0021b"></button>' +
+    '<button class="sw" data-col="#1e6fd9" style="background:#1e6fd9"></button><button class="sw" data-col="#1a9b3c" style="background:#1a9b3c"></button>' +
+    '<button class="btn" id="stthin">Fi</button><button class="btn" id="sterase">Goma</button><button class="btn" id="stundo">Desfés</button>' +
+    '<button class="btn" id="stclr">Esborra pàgina</button><button class="btn p" id="stdone">Fet</button></div>';
+  document.body.appendChild(st);
+  var cache = {}, annC = {}, cur = { i: 0, p: 1 }, lock = null, showAnn = true;
+  var draw = { on: false, col: '#111111', w: 0.0025, erase: false, dirty: {}, stroke: null };
+  try { if (navigator.wakeLock) navigator.wakeLock.request('screen').then(function(l){ lock = l; }).catch(function(){}); } catch (e) {}
+  try { if (st.requestFullscreen && !/iPhone|iPad|Macintosh/.test(navigator.userAgent)) st.requestFullscreen().catch(function(){}); } catch (e) {}
+  function get(i){
+    if (!cache[i]) cache[i] = pdfLibs().then(function(){ return run('getPdfForEdit', fileId(docUrl(docs[i]))); })
+      .then(function(fd){ return window.pdfjsLib.getDocument({ data: b64ToBytes(fd.data) }).promise; });
+    cache[i].catch(function(){ delete cache[i]; });
+    return cache[i];
+  }
+  function ann(i){
+    var id = docs[i]['ID'];
+    if (!annC[id]) annC[id] = (docs[i]['Anotacions'] ? run('getAnnotations', id) : Promise.resolve(''))
+      .then(function(s){ try { var a = s ? JSON.parse(s) : null; return a && a.pages ? a : { v: 1, pages: {} }; } catch (e) { return { v: 1, pages: {} }; } });
+    return annC[id];
+  }
+  function strokesOf(a){ return a.pages[cur.p] || (a.pages[cur.p] = []); }
+  function paintAnn(){
+    var o = $('sto'), c = $('stc'); if (!o) return;
+    o.width = c.width; o.height = c.height; o.style.width = c.style.width; o.style.height = c.style.height;
+    var ctx = o.getContext('2d'); ctx.clearRect(0, 0, o.width, o.height);
+    if (!showAnn) return;
+    ann(cur.i).then(function(a){ (a.pages[cur.p] || []).forEach(function(s){ drawStroke(ctx, s, o.width, o.height); }); });
+  }
+  function drawStroke(ctx, s, W, H){
+    var p = s.p; if (p.length < 2) return;
+    ctx.strokeStyle = s.c; ctx.lineWidth = Math.max(1, s.w * W); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(p[0] * W, p[1] * H);
+    if (p.length === 2) ctx.lineTo(p[0] * W + 0.1, p[1] * H);
+    for (var k = 2; k < p.length; k += 2) ctx.lineTo(p[k] * W, p[k+1] * H);
+    ctx.stroke();
+  }
+  function show(){
+    var i = cur.i, newDoc = show.last !== i; show.last = i; $('stsel').value = i;
+    var rl = null, rt = setTimeout(function(){ $('stmsg').style.display = 'block'; rl = ringLoader($('stmsg'), docs[i]['Títol']); }, newDoc ? 0 : 250);
+    if (newDoc) { $('stc').style.visibility = 'hidden'; $('sto').style.visibility = 'hidden'; }
+    var ok = function(){ clearTimeout(rt); if (rl) rl.done(); setTimeout(function(){ $('stmsg').style.display = 'none'; }, rl ? 180 : 0);
+      $('stc').style.visibility = ''; $('sto').style.visibility = ''; };
+    get(i).then(function(pdf){
+      if (cur.p < 0) cur.p = pdf.numPages;
+      cur.p = Math.max(1, Math.min(cur.p, pdf.numPages));
+      $('stpg').textContent = 'Pàg. ' + cur.p + ' / ' + pdf.numPages;
+      return pdf.getPage(cur.p).then(function(pg){
+        var W = st.clientWidth, H = st.clientHeight - (draw.on ? 112 : 0), dpr = Math.min(window.devicePixelRatio || 1, 3);
+        var v1 = pg.getViewport({ scale: 1 }), sc = Math.min(W / v1.width, H / v1.height);
+        var vp = pg.getViewport({ scale: sc * dpr }), c = $('stc');
+        c.width = vp.width; c.height = vp.height; c.style.width = (vp.width / dpr) + 'px'; c.style.height = (vp.height / dpr) + 'px';
+        paintAnn();
+        return pg.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise.then(ok);
+      }).then(function(){ if (cur.p === pdf.numPages && docs[i+1]) get(i+1); });
+    }).catch(function(e){ clearTimeout(rt); $('stmsg').style.display = 'block'; (rl || ringLoader($('stmsg'))).fail('No s\'ha pogut obrir: ' + (e.message || e)); });
+  }
+  function saveAnn(i){
+    var id = docs[i]['ID'];
+    if (!draw.dirty[id]) return Promise.resolve();
+    return ann(i).then(function(a){
+      Object.keys(a.pages).forEach(function(k){ if (!a.pages[k].length) delete a.pages[k]; });
+      var has = Object.keys(a.pages).length > 0;
+      return run('saveAnnotations', id, has ? JSON.stringify(a) : '').then(function(){
+        draw.dirty[id] = false; docs[i]['Anotacions'] = has ? 'Sí' : ''; var r = find('Documents', id); if (r) r['Anotacions'] = docs[i]['Anotacions'];
+        toast(has ? 'Anotacions desades' : 'Anotacions esborrades');
+      });
+    }).catch(function(e){ toast('No s\'han pogut desar les anotacions: ' + e.message); });
+  }
+  function go(fn){ saveAnn(cur.i); fn(); }
+  function next(){
+    get(cur.i).then(function(pdf){
+      if (cur.p < pdf.numPages) { cur.p++; show(); }
+      else if (cur.i < docs.length - 1) { saveAnn(cur.i); cur.i++; cur.p = 1; show(); }
+      else toast('Final del programa');
+    });
+  }
+  function prev(){
+    if (cur.p > 1) { cur.p--; show(); }
+    else if (cur.i > 0) { saveAnn(cur.i); cur.i--; cur.p = -1; show(); }
+  }
+  function close(){
+    saveAnn(cur.i);
+    document.removeEventListener('keydown', key); window.removeEventListener('resize', show);
+    try { if (lock) lock.release(); } catch (e) {}
+    try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) {}
+    st.remove();
+    if (opts.onClose) opts.onClose();
+  }
+  function key(e){
+    if (['ArrowRight','ArrowDown','PageDown'].indexOf(e.key) > -1 || (e.key === ' ' && !draw.on)) { e.preventDefault(); next(); }
+    else if (['ArrowLeft','ArrowUp','PageUp'].indexOf(e.key) > -1) { e.preventDefault(); prev(); }
+    else if (e.key === 'Escape') { if (draw.on) setDraw(false); else close(); }
+  }
+  document.addEventListener('keydown', key);
+  window.addEventListener('resize', show);
+  // Navegació amb el dit (fora del mode llapis)
+  var tx = null;
+  st.addEventListener('touchstart', function(e){ if (!draw.on) tx = e.touches[0].clientX; }, { passive: true });
+  st.addEventListener('touchend', function(e){
+    if (tx === null || draw.on) return; var dx = e.changedTouches[0].clientX - tx; tx = null;
+    if (Math.abs(dx) > 50) { st._swiped = true; if (dx < 0) next(); else prev(); }
+  });
+  st.addEventListener('click', function(e){
+    if (draw.on) return;
+    if (st._swiped) { st._swiped = false; return; }
+    if (e.target.closest('#stbar') || e.target.closest('#sttools')) return;
+    var x = e.clientX / st.clientWidth;
+    if (x < 0.3) prev(); else if (x > 0.7) next(); else st.classList.toggle('bar');
+  });
+  // Llapis
+  function setDraw(on){
+    draw.on = on; st.classList.toggle('drawing', on); st.classList.toggle('bar', on);
+    if (on) { showAnn = true; $('steye').textContent = 'Anot.: Sí'; }
+    else saveAnn(cur.i);
+    show();
+  }
+  var o = $('sto');
+  function pt(e){ var r = o.getBoundingClientRect(); return [Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)), Math.max(0, Math.min(1, (e.clientY - r.top) / r.height))]; }
+  var penSeen = false;
+  o.addEventListener('pointerdown', function(e){
+    if (!draw.on) return;
+    if (e.pointerType === 'pen') penSeen = true;
+    if (penSeen && e.pointerType === 'touch') return; // amb Apple Pencil, el palmell no dibuixa
+    e.preventDefault(); o.setPointerCapture(e.pointerId);
+    var q = pt(e);
+    ann(cur.i).then(function(a){
+      var list = strokesOf(a);
+      if (draw.erase) { eraseAt(list, q); return; }
+      draw.stroke = { c: draw.col, w: draw.w, p: [+q[0].toFixed(4), +q[1].toFixed(4)] };
+      list.push(draw.stroke); draw.dirty[docs[cur.i]['ID']] = true;
+    });
+  });
+  o.addEventListener('pointermove', function(e){
+    if (!draw.on || (penSeen && e.pointerType === 'touch')) return;
+    var q = pt(e);
+    if (draw.erase) { if (e.buttons) ann(cur.i).then(function(a){ eraseAt(strokesOf(a), q); }); return; }
+    var s = draw.stroke; if (!s) return;
+    var n = s.p.length, lx = s.p[n-2], ly = s.p[n-1];
+    if (Math.abs(q[0]-lx) + Math.abs(q[1]-ly) < 0.0015) return;
+    s.p.push(+q[0].toFixed(4), +q[1].toFixed(4));
+    var ctx = o.getContext('2d'); drawStroke(ctx, { c: s.c, w: s.w, p: [lx, ly, q[0], q[1]] }, o.width, o.height);
+  });
+  function endStroke(){ draw.stroke = null; }
+  o.addEventListener('pointerup', endStroke); o.addEventListener('pointercancel', endStroke);
+  function eraseAt(list, q){
+    var before = list.length, r = 0.015;
+    for (var k = list.length - 1; k >= 0; k--) {
+      var p = list[k].p;
+      for (var j = 0; j < p.length; j += 2) if (Math.abs(p[j]-q[0]) < r && Math.abs(p[j+1]-q[1]) < r) { list.splice(k, 1); break; }
+    }
+    if (list.length !== before) { draw.dirty[docs[cur.i]['ID']] = true; paintAnn(); }
+  }
+  Array.prototype.forEach.call(st.querySelectorAll('[data-col]'), function(b){
+    b.onclick = function(){ draw.col = b.dataset.col; draw.erase = false; $('sterase').classList.remove('on');
+      Array.prototype.forEach.call(st.querySelectorAll('[data-col]'), function(x){ x.classList.toggle('on', x === b); }); };
+  });
+  $('stthin').onclick = function(){ draw.w = draw.w < 0.003 ? 0.006 : 0.0025; this.textContent = draw.w < 0.003 ? 'Fi' : 'Gruixut'; };
+  $('sterase').onclick = function(){ draw.erase = !draw.erase; this.classList.toggle('on', draw.erase); };
+  $('stundo').onclick = function(){ ann(cur.i).then(function(a){ var l = strokesOf(a); if (l.length) { l.pop(); draw.dirty[docs[cur.i]['ID']] = true; paintAnn(); } }); };
+  $('stclr').onclick = function(){ if (!confirm('Esborrar totes les anotacions d\'aquesta pàgina?')) return;
+    ann(cur.i).then(function(a){ a.pages[cur.p] = []; draw.dirty[docs[cur.i]['ID']] = true; paintAnn(); }); };
+  $('stdone').onclick = function(){ setDraw(false); };
+  $('stpen').onclick = function(e){ e.stopPropagation(); setDraw(!draw.on); };
+  $('steye').onclick = function(e){ e.stopPropagation(); showAnn = !showAnn; this.textContent = 'Anot.: ' + (showAnn ? 'Sí' : 'No'); paintAnn(); };
+  $('stx').onclick = close;
+  $('stsel').onchange = function(){ saveAnn(cur.i); cur.i = +this.value; cur.p = 1; show(); };
+  st.classList.add('bar'); setTimeout(function(){ if (!draw.on) st.classList.remove('bar'); }, 2500);
+  if (opts.draw) { draw.on = true; st.classList.add('drawing'); }
+  show();
+}
+
+/* ---------- Anotacions dins del PDF (per enviar) ---------- */
+function hexRgb(h){ var n = parseInt(h.slice(1), 16); return window.PDFLib.rgb(((n>>16)&255)/255, ((n>>8)&255)/255, (n&255)/255); }
+// Retorna un PDF nou amb les anotacions dibuixades a sobre (l'original no es toca)
+function burnAnnotations(bytes, a){
+  var L;
+  return pdfLibs().then(function(){ L = window.PDFLib; return Promise.all([L.PDFDocument.load(bytes, { ignoreEncryption: true }), window.pdfjsLib.getDocument({ data: bytes.slice() }).promise]); })
+  .then(function(r){
+    var doc = r[0], js = r[1], pages = doc.getPages(), chain = Promise.resolve();
+    Object.keys(a.pages || {}).forEach(function(k){
+      var n = +k; if (!pages[n-1] || !a.pages[k].length) return;
+      chain = chain.then(function(){ return js.getPage(n); }).then(function(pg){
+        var vp = pg.getViewport({ scale: 1 }), page = pages[n-1];
+        a.pages[k].forEach(function(s){
+          var col = hexRgb(s.c), th = Math.max(0.5, s.w * vp.width), p = s.p;
+          var P = function(j){ var q = vp.convertToPdfPoint(p[j] * vp.width, p[j+1] * vp.height); return { x: q[0], y: q[1] }; };
+          if (p.length === 2) { var a0 = P(0); page.drawCircle({ x: a0.x, y: a0.y, size: th / 2, color: col }); return; }
+          for (var j = 2; j < p.length; j += 2) page.drawLine({ start: P(j-2), end: P(j), thickness: th, color: col, lineCap: L.LineCapStyle.Round });
+        });
+      });
+    });
+    return chain.then(function(){ return doc.save(); });
+  });
+}
+function annotatedBytes(d, bytes){
+  if (!d['Anotacions']) return Promise.resolve(bytes);
+  return run('getAnnotations', d['ID']).then(function(s){
+    var a = null; try { a = s ? JSON.parse(s) : null; } catch (e) {}
+    return a && a.pages && Object.keys(a.pages).length ? burnAnnotations(bytes, a) : bytes;
+  });
+}
+
+/* ---------- Paquet en un sol PDF ---------- */
+function shareLinks(title, url){
+  var txt = title + ' \u2013 ' + url;
+  return '<div class="srow">' +
+    '<a class="btn" target="_blank" href="https://wa.me/?text='+encodeURIComponent(txt)+'">WhatsApp</a>' +
+    '<a class="btn" target="_blank" href="https://t.me/share/url?url='+encodeURIComponent(url)+'&text='+encodeURIComponent(title)+'">Telegram</a>' +
+    '<a class="btn" target="_blank" href="mailto:?subject='+encodeURIComponent(title)+'&body='+encodeURIComponent(txt)+'">Correu</a></div>';
+}
+/* Ordre de guió de director: general, vent fusta, vent metall, percussió, teclats/arpa, veus, corda */
+var SCORE_ORDER = [
+  [/partitura general|full score|\bscore\b|\bguio\b|\bdirector\b|conductor|\bgeneral\b|partitur\b|\bdirettore\b/, 0],
+  [/piccolo|flauti|ottavino/, 10], [/alto flute|flauta en sol|flauta alt/, 12], [/flaut|flute|flote|\bfl\b/, 11],
+  [/english horn|cor angl|corno ingl|corn angl|cor anglais|englischhorn/, 22], [/oboe|oboi|hautbois|\bob\b/, 20],
+  [/requint|clarinet(e|o)? (in |en )?(eb|mib)|eb clarinet/, 29], [/bass clarinet|clarinet(e|o)? baix|clarinete bajo|clarone|bassklarinet/, 32],
+  [/clarin|klarinet|\bcl\b/, 30],
+  [/soprano sax|saxo(fon|phone)? soprano|sax soprano/, 34], [/alto sax|saxo(fon|phone)? alt|sax alt/, 35], [/tenor sax|saxo(fon|phone)? tenor|sax tenor/, 36],
+  [/baritone sax|saxo(fon|phone)? bariton|sax bariton/, 37], [/saxo|\bsax\b/, 35],
+  [/contrafag|contrabassoon|kontrafag|contrabasson|controfag/, 42], [/fagot|bassoon|basson|\bfg\b|\bbsn\b/, 40],
+  [/\bhorn|trompa|corno|\bhrn\b|waldhorn/, 50], [/trumpet|trompet|tromba|cornet|fliscorn|flugel|\btpt\b/, 55],
+  [/bass trombone|trombo baix|trombon bajo/, 62], [/trombo|posaune|\btbn\b/, 60], [/euphonium|bombard|baritone|tenor tuba/, 64], [/tuba|\btb\b/, 66],
+  [/timpan|timbal|pauken/, 70], [/percus|bateria|drum|caixa|bombo|plats|cymbal|glock|xilo|xylo|marimba|vibraf|vibraph|lamines|claves|triangle/, 72],
+  [/arpa|harp|harpe/, 80], [/celest/, 81], [/piano|pno|klavier|teclat|keyboard|organ|orgue/, 82], [/guitar|guitarra/, 83],
+  [/soprano|\bsop\b/, 85], [/contralt|mezzo/, 86], [/\btenor\b/, 87], [/baritono|\bbaix\b voz|\bbass voice/, 88], [/\bcor\b mixt|choir|coral/, 89],
+  [/violin|violi\b|violino|\bvln?\b|geige/, 90], [/viola\b|\bvla\b|\balto\b/, 92], [/cello|violoncel|\bvc\b/, 93],
+  [/contrabai|double bass|contrabass|kontrabass|contrabajo|\bcb\b|\bbass\b/, 94]
+];
+function scoreRank(d){
+  var tip = String(d['Tipus']||''), t = ' ' + norm(String(d['T\u00edtol']||'').replace(/^\s*\d{1,3}[a-z]?[\s._-]+/i, '').replace(/[_\-.()]+/g, ' ')) + ' ';
+  var ins = ' ' + norm(d['Instrument']||'') + ' ';
+  var r = 99;
+  if (/partitura general/i.test(tip) && !/particel/i.test(tip)) r = 0;
+  else for (var i = 0; i < SCORE_ORDER.length; i++) if (SCORE_ORDER[i][0].test(t) || SCORE_ORDER[i][0].test(ins)) { r = SCORE_ORDER[i][1]; break; }
+  var m = /(?:^|\s)([1-4])(?:st|nd|rd|th|r|n|o|t)?(?=\s)|(?:^|\s)(iv|iii|ii)(?=\s)/.exec(t + ins);
+  var k = m ? (m[1] ? +m[1] : { ii: 2, iii: 3, iv: 4 }[m[2]]) : 0;
+  return r * 10 + k;
+}
+function sortScore(docs){
+  return docs.map(function(d, i){ return { d: d, r: scoreRank(d), i: i }; })
+    .sort(function(a, b){ return a.r - b.r || norm(a.d['T\u00edtol']).localeCompare(norm(b.d['T\u00edtol'])); })
+    .map(function(x){ return x.d; });
+}
+function showPackage(docs, title, back, opts){
+  opts = opts || {};
+  docs = pdfOnly(docs);
+  if (!docs.length) { toast('No hi ha cap PDF per ajuntar'); return; }
+  if (opts.score) docs = sortScore(docs);
+  openPanel(opts.offline ? 'Sense connexi\u00f3' : 'PDF \u00fanic', (opts.offline ?
+    '<div class="share" style="margin-top:0"><b>Per tenir el programa sense connexi\u00f3</b><div class="hint" style="margin-top:4px">1. Toca \u00abCrea el PDF\u00bb. 2. Toca \u00abEnvia el PDF\u00bb i tria <b>Desa a Fitxers</b> &gt; <b>Al meu iPad</b> (o obre\'l amb l\'app <b>Llibres</b>). Aix\u00ed el tindr\u00e0s a l\'iPad encara que no hi hagi cobertura, amb les teves anotacions.</div></div>'
+    : '<div class="hint">' + (opts.score ? 'Ordenat com un gui\u00f3 de director: primer la partitura general i despr\u00e9s les particel\u00b7les (vent fusta, vent metall, percussi\u00f3, corda). Pots canviar l\'ordre amb les fletxes o treure\'n alguna.' : 'Tria les partitures i l\'ordre. Es crear\u00e0 un sol PDF per enviar als alumnes o companys.') + '</div>' +
+      (docs.length > 1 ? '<div class="row" style="margin-top:8px"><button class="btn" id="pksort">Ordena com un gui\u00f3 de director</button></div>' : '')) +
+    '<label>Nom del PDF</label><input id="pkname" value="'+esc(title)+'" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit">' +
+    (docs.some(function(d){ return d['Anotacions']; }) ? '<label class="chk" style="display:flex;gap:8px;align-items:center;color:var(--ink);margin-top:12px"><input type="checkbox" id="pkann" style="width:20px;height:20px"'+(opts.offline?' checked':'')+'> Amb les meves anotacions</label>' : '') +
+    '<div class="lst" id="pklist" style="margin-top:12px"></div>' +
+    '<div class="row"><button class="btn p" id="pkgo">Crea el PDF</button></div><div id="pkmsg" class="hint"></div><div id="pkout"></div>', back);
+  var sel = docs.map(function(){ return true; });
+  function draw(){
+    $('pklist').innerHTML = docs.map(function(d, i){
+      return '<div class="lrow" style="cursor:default"><input type="checkbox" data-i="'+i+'"'+(sel[i]?' checked':'')+' style="width:20px;height:20px">' + cover(d, ' ') +
+        '<div class="body"><div class="t">'+esc(d['T\u00edtol'])+'</div><div class="s">'+esc([d['Tipus'], d['Anotacions'] ? 'amb anotacions' : ''].filter(Boolean).join(' \u00b7 '))+'</div></div>' +
+        '<button class="btn" data-up="'+i+'" style="padding:4px 9px">\u2191</button><button class="btn" data-dn="'+i+'" style="padding:4px 9px">\u2193</button></div>';
+    }).join('');
+    Array.prototype.forEach.call($('pklist').querySelectorAll('[data-i]'), function(c){ c.onchange = function(){ sel[+c.dataset.i] = c.checked; }; });
+    function sw(a, b){ if (b < 0 || b >= docs.length) return; var t = docs[a]; docs[a] = docs[b]; docs[b] = t; t = sel[a]; sel[a] = sel[b]; sel[b] = t; draw(); }
+    Array.prototype.forEach.call($('pklist').querySelectorAll('[data-up]'), function(b){ b.onclick = function(){ sw(+b.dataset.up, +b.dataset.up - 1); }; });
+    Array.prototype.forEach.call($('pklist').querySelectorAll('[data-dn]'), function(b){ b.onclick = function(){ sw(+b.dataset.dn, +b.dataset.dn + 1); }; });
+  }
+  draw();
+  if ($('pksort')) $('pksort').onclick = function(){
+    var on = docs.map(function(d, i){ return sel[i] ? d : null; });
+    docs = sortScore(docs); sel = docs.map(function(d){ return on.indexOf(d) > -1; }); draw(); toast('Ordenat com un gui\u00f3');
+  };
+  $('pkgo').onclick = function(){
+    var list = docs.filter(function(d, i){ return sel[i]; });
+    if (!list.length) { toast('Tria almenys una partitura'); return; }
+    var name = ($('pkname').value || title).trim(), b = $('pkgo'); b.disabled = true;
+    var L, out, n = 0;
+    pdfLibs().then(function(){ L = window.PDFLib; return L.PDFDocument.create(); }).then(function(o){
+      out = o; var chain = Promise.resolve();
+      list.forEach(function(d){
+        chain = chain.then(function(){ n++; $('pkmsg').textContent = 'Afegint ' + n + ' de ' + list.length + ': ' + d['T\u00edtol'];
+          return run('getPdfForEdit', fileId(docUrl(d))); })
+          .then(function(fd){ var by = b64ToBytes(fd.data); return ($('pkann') && $('pkann').checked) ? annotatedBytes(d, by) : by; })
+          .then(function(by){ return L.PDFDocument.load(by, { ignoreEncryption: true }); })
+          .then(function(src){ return out.copyPages(src, src.getPageIndices()); })
+          .then(function(pages){ pages.forEach(function(p){ out.addPage(p); }); })
+          .catch(function(e){ toast('No s\'ha pogut afegir ' + d['T\u00edtol']); });
+      });
+      return chain;
+    }).then(function(){ out.setTitle(name); return out.save(); }).then(function(bytes){
+      b.disabled = false;
+      var fname = name.replace(/[\\/:*?"<>|]+/g, '-') + '.pdf';
+      var file = new File([bytes], fname, { type: 'application/pdf' });
+      var url = URL.createObjectURL(file), mb = (bytes.length / 1048576).toFixed(1);
+      $('pkmsg').textContent = 'Fet: ' + out.getPageCount() + ' p\u00e0gines \u00b7 ' + mb + ' MB';
+      var canShare = navigator.canShare && navigator.canShare({ files: [file] });
+      $('pkout').innerHTML = '<div class="share"><h3>Envia-ho</h3><div class="srow">' +
+        (canShare ? '<button class="btn p" id="pkshare">Envia el PDF</button>' : '') +
+        '<a class="btn" id="pkdl" href="'+url+'" download="'+esc(fname)+'">Descarrega</a>' +
+        '<button class="btn" id="pkdrive">Desa al Drive i comparteix un enlla\u00e7</button></div><div id="pklinks"></div></div>';
+      if ($('pkshare')) $('pkshare').onclick = function(){ navigator.share({ files: [file], title: name }).catch(function(e){ if (e && e.name !== 'AbortError') toast('No s\'ha pogut obrir el men\u00fa de compartir'); }); };
+      $('pkdrive').onclick = function(){
+        var bb = $('pkdrive'); bb.disabled = true; bb.textContent = 'Desant...';
+        run('savePackage', bytesToB64(bytes), fname).then(function(r){ return run('makePublicLink', r.id); }).then(function(link){
+          bb.textContent = 'Desat a Arxiu de Repertori / Paquets';
+          $('pklinks').innerHTML = '<div class="hint" style="margin-top:8px">Qualsevol persona amb l\'enlla\u00e7 el podr\u00e0 veure i descarregar:</div>' + shareLinks(name, link);
+        }).catch(function(e){ bb.disabled = false; bb.textContent = 'Desa al Drive i comparteix un enlla\u00e7'; toast('Error: ' + e.message); });
+      };
+    }).catch(function(e){ b.disabled = false; $('pkmsg').textContent = 'Error: ' + (e.message || e); });
+  };
+}
+// Grups propis de cada centre (a m\u00e9s dels cursos d'Iniciaci\u00f3, Elemental i Professional)
+var CENTRE_GROUPS = { 'Vila-seca': ['M\u00fasica de cambra'], "L'Hospitalet": ['EMMCA', 'Ministrils', "Toc d'inici"] };
+function isGroup(c){ return Object.keys(CENTRE_GROUPS).some(function(k){ return CENTRE_GROUPS[k].indexOf(c) > -1; }); }
+function centreGroups(){ return S.centre ? (CENTRE_GROUPS[S.centre] || []) : Object.keys(CENTRE_GROUPS).reduce(function(a, k){ return a.concat(CENTRE_GROUPS[k]); }, []); }
+function inGroup(o, c){ return splitTags(o['Curs']).indexOf(c) > -1 || splitTags(o['Etiquetes']).indexOf(c) > -1; }
+function inCentre(o){ return !S.centre || o['Centre']===S.centre || splitTags(o['Etiquetes']).indexOf(S.centre) > -1 ||
+  (CENTRE_GROUPS[S.centre] || []).some(function(g){ return inGroup(o, g); }); }
+function courseDocs(curs){
+  var seen = {}, out = [];
+  rows('Obres').filter(function(o){ return inGroup(o, curs) && inCentre(o); })
+    .sort(function(a,b){ return norm(a['Obra']).localeCompare(norm(b['Obra'])); })
+    .forEach(function(o){ docsFor('Obra', o['ID']).forEach(function(d){ if (!seen[d['ID']]) { seen[d['ID']] = 1; out.push(d); } }); });
+  rows('Documents').filter(function(d){ return splitTags(d['Curs']).indexOf(curs) > -1; })
+    .sort(function(a,b){ return norm(a['T\u00edtol']).localeCompare(norm(b['T\u00edtol'])); })
+    .forEach(function(d){ if (!seen[d['ID']]) { seen[d['ID']] = 1; out.push(d); } });
+  return out;
+}
+
+load();
+</script>
+</body>
+</html>
