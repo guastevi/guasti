@@ -27,6 +27,7 @@ struct FaristolView: View {
     @State private var dirty = Set<String>()
     @State private var confirmClear = false
     @State private var redraw = 0
+    @FocusState private var keys: Bool
 
     init(docs: [Fila], title: String, startDrawing: Bool = false, start: Int = 0) {
         let pdfs = docs.filter(Arxiu.isPdf)
@@ -78,12 +79,31 @@ struct FaristolView: View {
         .ignoresSafeArea(edges: drawing ? [] : .all)
         .overlay(alignment: .top) { if bar || drawing { topBar.transition(.move(edge: .top)) } }
         .overlay(alignment: .bottom) { if drawing { tools } }
+        // Pedal Bluetooth o teclat: fletxes, pàgina avall/amunt i espai, com a la web
+        .focusable()
+        .focusEffectDisabled()
+        .focused($keys)
+        .onKeyPress(keys: [.rightArrow, .downArrow, .pageDown, .space, .return]) { press in
+            if press.key == .space && drawing { return .ignored }
+            next()
+            return .handled
+        }
+        .onKeyPress(keys: [.leftArrow, .upArrow, .pageUp]) { _ in
+            prev()
+            return .handled
+        }
+        .onKeyPress(.escape) {
+            if drawing { setDrawing(false) } else { close() }
+            return .handled
+        }
+        .onChange(of: drawing) { _, _ in keys = true }
         .statusBarHidden(!bar)
         .persistentSystemOverlays(.hidden)
         .preferredColorScheme(.dark)
         .modifier(PToastOverlay())
         .onAppear {
             UIApplication.shared.isIdleTimerDisabled = true
+            keys = true
             drawing = startDrawing
             if !startDrawing {
                 Task {
