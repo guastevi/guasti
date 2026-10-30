@@ -971,7 +971,7 @@ struct PrevistForm: View {
     @State private var imp = ""
     @State private var mes = 1
     @State private var cadaAny = true
-    @State private var anyVist = Int(FinMes.actual().prefix(4)) ?? 2026
+    @State private var anyFix = Int(FinMes.actual().prefix(4)) ?? 2026
     @State private var saving = false
     @State private var error: String?
 
