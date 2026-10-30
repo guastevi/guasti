@@ -53,6 +53,12 @@ Pantalles natives per publicar alhora a l'Instagram i al Facebook de l'Auditori 
 
 **A Guasti:** obre Xarxes, toca **Connecta** i enganxa l'enllaç de l'app del publicador (el que acaba en `?k=…`). Es desa al Keychain de l'iPhone, mai al codi.
 
+## Secció Casa (gestió de casa)
+
+El llibre de manteniment del pis: contracte de lloguer, renovacions i renda, factures i subministraments, reparacions, manteniment, compres per a casa i documents importants. A l'inici hi ha la renda d'ara, quan s'acaba el contracte, la propera actualització de renda i una llista del que està pendent (manteniment que toca, reparacions obertes, garanties i documents que caduquen). Cada registre pot portar fotos o PDF.
+
+Les dades van al full **Casa Guasti** (pestanya *Registre*) i els documents a la carpeta **Casa Guasti** del Drive. La Guasti API els crea sola el primer cop que obres la secció.
+
 ## Afegir una secció nova
 
 1. Crea `ios/Guasti/Modules/<Nom>/` amb un tipus que compleixi `GuastiModule`.

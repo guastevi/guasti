@@ -25,6 +25,7 @@ enum ModuleRegistry {
         GastosModule(),
         PartituresModule(),
         XarxesModule(),
+        CasaModule(),
     ]
 }
 
