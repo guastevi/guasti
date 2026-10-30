@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
 /// Un dibuix (un PNG de la carpeta "guastevitshirts" de Drive).
 struct Dibuix: Codable, Identifiable, Hashable {
@@ -73,30 +74,91 @@ final class TshirtsStore: ObservableObject {
 
     /// Puja dibuixos. Cada element és el fitxer i el nom (sense extensió) que tindrà a Drive.
     func upload(_ items: [(data: Data, name: String?)]) async {
-        guard let client = Connection.shared.client else {
-            errorMessage = "Falta configurar la connexió amb Google."
-            return
-        }
         uploading = (0, items.count)
         defer { uploading = nil }
         for item in items {
-            guard let png = Self.png(item.data) else {
-                errorMessage = "Un dels fitxers no és una imatge."
+            if !(await uploadOne(item.data, name: item.name)) { break }
+            if let u = uploading { uploading = (u.done + 1, u.total) }
+        }
+    }
+
+    /// Puja fitxers triats a Fitxers. Si és una carpeta, hi puja totes les imatges de dins;
+    /// les que ja hi són (mateix nom) se salten, així es pot tornar a fer sense duplicar res.
+    /// Es llegeixen d'una en una perquè una carpeta de dibuixos grans no ompli la memòria.
+    func upload(urls: [URL]) async {
+        var scoped: [URL] = []
+        defer { scoped.forEach { $0.stopAccessingSecurityScopedResource() } }
+        var files: [URL] = []
+        for url in urls {
+            if url.startAccessingSecurityScopedResource() { scoped.append(url) }
+            if (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true {
+                let items = (try? FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)) ?? []
+                files += items
+                    .map { $0.pathExtension == "icloud" ? Self.iCloudOriginal($0) : $0 }
+                    .filter { UTType(filenameExtension: $0.pathExtension)?.conforms(to: .image) == true }
+                    .sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
+            } else {
+                files.append(url)
+            }
+        }
+        let existing = Set(dibuixos.map { $0.name.lowercased() })
+        files = files.filter { !existing.contains($0.deletingPathExtension().lastPathComponent.lowercased()) }
+        guard !files.isEmpty else { return }
+
+        uploading = (0, files.count)
+        // Que la pantalla no s'apagui mentre puja una carpeta llarga.
+        UIApplication.shared.isIdleTimerDisabled = true
+        defer {
+            uploading = nil
+            UIApplication.shared.isIdleTimerDisabled = false
+        }
+        for file in files {
+            guard let data = await Self.read(file) else {
+                if let u = uploading { uploading = (u.done + 1, u.total) }
                 continue
             }
-            do {
-                var params: [String: Any] = ["base64": png.base64EncodedString()]
-                if let name = item.name, !name.isEmpty { params["name"] = name }
-                let response: OneResponse = try await client.call("tshirts.upload", params)
-                dibuixos.insert(response.dibuix, at: 0)
-                await TshirtLoader.shared.prime(png, id: response.dibuix.id)
-                errorMessage = nil
-                save()
-            } catch {
-                errorMessage = Self.friendly(error)
-                break
-            }
+            let ok = await uploadOne(data, name: file.deletingPathExtension().lastPathComponent)
+            if !ok { break }
             if let u = uploading { uploading = (u.done + 1, u.total) }
+        }
+    }
+
+    /// Llegeix un fitxer de Fitxers; si és a iCloud i encara no és al mòbil, el baixa primer.
+    private static func read(_ url: URL) async -> Data? {
+        await Task.detached {
+            try? FileManager.default.startDownloadingUbiquitousItem(at: url)
+            var data: Data?
+            var error: NSError?
+            NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &error) { data = try? Data(contentsOf: $0) }
+            return data
+        }.value
+    }
+
+    /// ".Dibuix.png.icloud" (encara no baixat) → "Dibuix.png".
+    private static func iCloudOriginal(_ url: URL) -> URL {
+        var name = url.deletingPathExtension().lastPathComponent
+        if name.hasPrefix(".") { name.removeFirst() }
+        return url.deletingLastPathComponent().appendingPathComponent(name)
+    }
+
+    private func uploadOne(_ data: Data, name: String?) async -> Bool {
+        guard let client = Connection.shared.client else {
+            errorMessage = "Falta configurar la connexió amb Google."
+            return false
+        }
+        guard let png = Self.png(data) else { return true }
+        do {
+            var params: [String: Any] = ["base64": png.base64EncodedString()]
+            if let name, !name.isEmpty { params["name"] = name }
+            let response: OneResponse = try await client.call("tshirts.upload", params)
+            dibuixos.insert(response.dibuix, at: 0)
+            await TshirtLoader.shared.prime(png, id: response.dibuix.id)
+            errorMessage = nil
+            save()
+            return true
+        } catch {
+            errorMessage = Self.friendly(error)
+            return false
         }
     }
 

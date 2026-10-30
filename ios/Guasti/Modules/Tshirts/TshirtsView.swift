@@ -15,6 +15,37 @@ struct TshirtsModule: GuastiModule {
     }
 }
 
+/// Les botigues i webs on hi ha els dissenys.
+private let botigues: [(nom: String, icon: String, url: String)] = [
+    ("Webnode", "globe", "https://guastevitshirts.webnode.es/"),
+    ("Bandcamp", "music.note", "https://guastevi.bandcamp.com/"),
+    ("La Tostadora", "tshirt", "https://www.latostadora.com/guastevi/"),
+    ("Redbubble", "bag", "https://www.redbubble.com/people/guastevi/shop"),
+    ("TeePublic", "cart", "https://www.teepublic.com/user/guastevi"),
+    ("Instagram", "camera", "https://www.instagram.com/guastevitshirts/"),
+]
+
+private struct BotiguesRow: View {
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(botigues, id: \.nom) { b in
+                    if let url = URL(string: b.url) {
+                        Link(destination: url) {
+                            Label(b.nom, systemImage: b.icon)
+                                .font(Theme.body(14, weight: .semibold, relativeTo: .subheadline))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(Color(.secondarySystemBackground), in: Capsule())
+                        }
+                        .foregroundStyle(Theme.tint)
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// Fons darrere els PNG transparents: clar, fosc o quadrícula.
 enum TshirtFons: String, CaseIterable {
     case clar, fosc, quadricula
@@ -105,6 +136,8 @@ struct TshirtsView: View {
                         .foregroundStyle(store.errorMessage != nil && store.dibuixos.isEmpty ? .red : .secondary)
                 }
 
+                BotiguesRow()
+
                 if let u = store.uploading {
                     HStack(spacing: 10) {
                         ProgressView()
@@ -148,7 +181,7 @@ struct TshirtsView: View {
                 .accessibilityLabel("Ordre i fons")
                 Menu {
                     Button { pickingPhotos = true } label: { Label("Des de Fotos", systemImage: "photo.on.rectangle") }
-                    Button { pickingFiles = true } label: { Label("Des de Fitxers", systemImage: "folder") }
+                    Button { pickingFiles = true } label: { Label("Des de Fitxers (fitxers o una carpeta sencera)", systemImage: "folder") }
                 } label: {
                     Image(systemName: "plus")
                 }
@@ -168,15 +201,9 @@ struct TshirtsView: View {
                 await store.upload(files)
             }
         }
-        .fileImporter(isPresented: $pickingFiles, allowedContentTypes: [.image], allowsMultipleSelection: true) { result in
+        .fileImporter(isPresented: $pickingFiles, allowedContentTypes: [.image, .folder], allowsMultipleSelection: true) { result in
             guard case .success(let urls) = result else { return }
-            let files: [(data: Data, name: String?)] = urls.compactMap { url in
-                let scoped = url.startAccessingSecurityScopedResource()
-                defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-                guard let data = try? Data(contentsOf: url) else { return nil }
-                return (data, url.deletingPathExtension().lastPathComponent)
-            }
-            Task { await store.upload(files) }
+            Task { await store.upload(urls: urls) }
         }
     }
 }
