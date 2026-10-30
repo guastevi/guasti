@@ -29,7 +29,7 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
-        NSCameraUsageDescription: Per fer fotos de les peces de l'armari.
+        NSCameraUsageDescription: Per fer fotos de les peces de l'armari i per a les publicacions a xarxes.
         NSFaceIDUsageDescription: Per mostrar les peces privades.
         ITSAppUsesNonExemptEncryption: false
         UIAppFonts:

@@ -18,6 +18,7 @@ enum ModuleRegistry {
         ArmariModule(),
         GastosModule(),
         PartituresModule(),
+        XarxesModule(),
     ]
 }
 

@@ -42,6 +42,15 @@ La compilació la fa GitHub sola (gratis) cada cop que hi ha canvis, i deixa el 
 
 Amb un Apple ID gratuït, les apps caduquen als 7 dies i només n'hi pot haver 3 d'actives (SideStore compta com una, així que Guasti en fa servir una altra i en queda una de lliure). SideStore les renova des del mateix iPhone; amb una automatització de Dreceres diària no has de fer res. Només caldrà intervenir si l'iPhone passa més de 7 dies sense poder renovar (apagat, sense internet) o si una actualització d'iOS obliga a refer l'aparellament.
 
+## Secció Xarxes (publicador de l'Auditori)
+
+És el mateix publicador web d'Instagram i Facebook de l'Auditori (Apps Script «Publicador Auditori»), obert dins de Guasti. No passa per la Guasti API.
+
+- El primer cop, toca **Afegeix l'enllaç** i enganxa l'enllaç de l'app que fa servir l'equip (el que acaba en `?k=…`). Es desa al Keychain de l'iPhone, no al codi.
+- Les fotos i vídeos es trien amb el selector de sempre (Fototeca, Fes una foto, Arxius).
+- Els enllaços «Veure a Instagram / Facebook» s'obren a fora. Al menú ⋯ hi ha **Refresca**, **Obre a Safari** i **Canvia l'enllaç**.
+- La implementació ha d'estar a «Qui hi té accés: Qualsevol usuari». Si demana compte de Google, Google no deixa entrar-hi des d'una vista web i l'app avisa d'obrir-lo a Safari.
+
 ## Afegir una secció nova
 
 1. Crea `ios/Guasti/Modules/<Nom>/` amb un tipus que compleixi `GuastiModule`.
