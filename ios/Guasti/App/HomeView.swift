@@ -4,7 +4,7 @@ struct HomeView: View {
     @ObservedObject private var connection = Connection.shared
     @State private var showSettings = false
 
-    private let columns = [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)]
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 3)
 
     var body: some View {
         NavigationStack {
@@ -27,7 +27,7 @@ struct HomeView: View {
 
     private var modules: some View {
             ScrollView {
-                LazyVGrid(columns: columns, spacing: 14) {
+                LazyVGrid(columns: columns, spacing: 10) {
                     ForEach(ModuleRegistry.all, id: \.id) { module in
                         if module.isAvailable {
                             NavigationLink {
@@ -73,29 +73,28 @@ private struct ModuleTile: View {
                 Image(logo)
                     .resizable()
                     .scaledToFit()
-                    .frame(height: 38)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 4)
-                    .background(.white, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .frame(height: 24)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 3)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
                     .accessibilityHidden(true)
             } else {
                 Image(systemName: module.systemImage)
-                    .font(.system(size: 30, weight: .semibold))
+                    .font(.system(size: 20, weight: .semibold))
             }
             Spacer(minLength: 0)
             Text(module.title)
-                .font(Theme.display(22))
-            Text(module.subtitle)
-                .font(Theme.body(13, relativeTo: .footnote))
-                .opacity(0.85)
+                .font(Theme.display(15))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
         }
         .foregroundStyle(.white)
-        .padding(16)
-        .frame(maxWidth: .infinity, minHeight: 140, alignment: .leading)
+        .padding(12)
+        .frame(maxWidth: .infinity, minHeight: 88, alignment: .leading)
         .background(
             LinearGradient(colors: [module.tint, module.tint.opacity(0.7)], startPoint: .topLeading, endPoint: .bottomTrailing),
-            in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
         )
-        .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
