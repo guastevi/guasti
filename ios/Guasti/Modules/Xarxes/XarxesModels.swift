@@ -130,7 +130,13 @@ struct PublicadorClient {
             let tros = String(decoding: net.prefix(160), as: UTF8.self)
                 .replacingOccurrences(of: "\n", with: " ").trimmingCharacters(in: .whitespaces)
             if tros.hasPrefix("<") {
-                throw APIError(message: "Google ha tornat una pàgina web en lloc de dades (\(accio)). Revisa que el publicador tingui el fitxer ApiGuasti i que la implementació sigui «Qualsevol usuari».")
+                // Traiem les etiquetes per veure el text de la pàgina (sol dir quin és l'error)
+                let pagina = String(decoding: net, as: UTF8.self)
+                    .replacingOccurrences(of: "(?s)<(style|script)[^>]*>.*?</\\1>", with: " ", options: .regularExpression)
+                    .replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
+                    .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+                    .trimmingCharacters(in: .whitespaces)
+                throw APIError(message: "Google ha tornat una pàgina web en lloc de dades (\(accio)): \(pagina.prefix(300))")
             }
             throw APIError(message: "Resposta inesperada de Google (\(accio)): \(tros)")
         }
