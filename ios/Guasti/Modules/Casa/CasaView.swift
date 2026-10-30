@@ -3,7 +3,7 @@ import QuickLook
 
 struct CasaModule: GuastiModule {
     let id = "casa"
-    let title = "Casa"
+    let title = "Pis de Lloguer"
     let subtitle = "Gestió de casa"
     let systemImage = "house.fill"
     let tint = CasaTheme.green
@@ -67,7 +67,7 @@ struct CasaView: View {
                 }
             }
         }
-        .navigationTitle("Casa")
+        .navigationTitle("Pis de Lloguer")
         .searchable(text: $query, prompt: "Cerca factures, reparacions, documents...")
         .refreshable { await store.load() }
         .task {
