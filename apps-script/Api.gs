@@ -60,6 +60,10 @@ function handle_(p) {
     'gastos.dades': () => gastosDades_(p.mes),
     'gastos.afegir': () => withLock_(() => gastosAfegir_(p.moviment, p.mes)),
     'gastos.esborrar': () => withLock_(() => gastosEsborrar_(p.id, p.mes)),
+    // Pestanyes de finances (comptes, bolos, previsió...): l'app fa els càlculs.
+    'gastos.taules': () => gastosTaules_(p.taules),
+    'gastos.desaFila': () => withLock_(() => gastosDesaFila_(p.taula, p.cols, p.fila, p.taules)),
+    'gastos.esborraFila': () => withLock_(() => gastosEsborraFila_(p.taula, p.id, p.taules)),
     'armari.reorder': () => withLock_(() => armariReorder_(p.pieceId, p.ids)),
     // Partitures: les mateixes funcions de l'app web "Arxiu de Repertori" (p.fn + p.args)
     'partitures': () => ({ r: partitures_(p.fn, p.args || []) }),
@@ -419,6 +423,82 @@ function gOrdena_(obj, total) {
 }
 
 function gArrod_(n) { return Math.round(n * 100) / 100; }
+
+// Pestanyes genèriques del full de finances. L'app defineix les columnes i fa els càlculs,
+// així les millores de la previsió o de l'IRPF no obliguen a tornar a implementar l'script.
+// Les pestanyes de l'app web (Moviments, Categories...) només es poden llegir.
+const G_NOMES_LECTURA = ['Moviments', 'Categories', 'Recurrents', 'Resum', 'Config'];
+
+function gTaula_(ss, nom, cols, crear) {
+  let sh = ss.getSheetByName(nom);
+  const editable = G_NOMES_LECTURA.indexOf(nom) === -1;
+  if (!sh) {
+    if (!crear || !editable || !cols || !cols.length) return null;
+    sh = ss.insertSheet(nom);
+  }
+  if (editable && cols && cols.length) {
+    const n = sh.getLastColumn();
+    const actuals = n ? sh.getRange(1, 1, 1, n).getValues()[0].map(h => String(h).trim()) : [];
+    const falten = cols.filter(c => actuals.indexOf(c) === -1);
+    if (falten.length) {
+      sh.getRange(1, actuals.filter(String).length + 1, 1, falten.length).setValues([falten]).setFontWeight('bold');
+      sh.setFrozenRows(1);
+    }
+  }
+  return sh;
+}
+
+function gastosTaules_(defs) {
+  const ss = gastosSS_();
+  const out = {};
+  Object.keys(defs || {}).forEach(nom => {
+    const sh = gTaula_(ss, nom, defs[nom], true);
+    if (!sh || sh.getLastRow() < 1) { out[nom] = []; return; }
+    const t = readTable_(sh);
+    out[nom] = t.rows
+      .filter(r => r.some(c => c !== '' && c !== null))
+      .map(r => {
+        const o = {};
+        t.headers.forEach((h, i) => {
+          if (!h) return;
+          const v = r[i];
+          o[h] = v instanceof Date ? Utilities.formatDate(v, G_TZ, 'yyyy-MM-dd')
+            : (v === null || v === undefined ? '' : String(v));
+        });
+        return o;
+      });
+  });
+  return { taules: out };
+}
+
+function gastosDesaFila_(nom, cols, fila, defs) {
+  if (G_NOMES_LECTURA.indexOf(nom) > -1) throw new Error('La pestanya ' + nom + ' no es pot editar des d\'aquí');
+  const ss = gastosSS_();
+  const sh = gTaula_(ss, nom, cols, true);
+  if (!sh) throw new Error('Falta la pestanya ' + nom);
+  fila = fila || {};
+  if (!fila.ID) fila.ID = newId_();
+  const t = readTable_(sh);
+  const i = t.col.ID === undefined ? -1 : t.rows.findIndex(r => String(r[t.col.ID]) === String(fila.ID));
+  const rowNumber = i > -1 ? i + 2 : sh.getLastRow() + 1;
+  // El text es desa com a text: així "2026-10" no es converteix en una data.
+  const formats = [t.headers.map(h => (h in fila && typeof fila[h] === 'string') ? '@' : 'General')];
+  sh.getRange(rowNumber, 1, 1, t.headers.length).setNumberFormats(formats);
+  if (i > -1) writeRow_(sh, t, rowNumber, fila);
+  else sh.getRange(rowNumber, 1, 1, t.headers.length).setValues([t.headers.map(h => (h in fila ? fila[h] : ''))]);
+  return Object.assign({ id: fila.ID }, defs ? gastosTaules_(defs) : {});
+}
+
+function gastosEsborraFila_(nom, id, defs) {
+  if (G_NOMES_LECTURA.indexOf(nom) > -1) throw new Error('La pestanya ' + nom + ' no es pot editar des d\'aquí');
+  const sh = gastosSS_().getSheetByName(nom);
+  if (!sh) throw new Error('Falta la pestanya ' + nom);
+  const t = readTable_(sh);
+  const i = t.rows.findIndex(r => String(r[t.col.ID]) === String(id));
+  if (i < 0) throw new Error("No s'ha trobat la fila");
+  sh.deleteRow(i + 2);
+  return defs ? gastosTaules_(defs) : {};
+}
 
 // ---------------------------------------------------------------- fotos
 
