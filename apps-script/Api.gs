@@ -71,6 +71,12 @@ function handle_(p) {
     'casa.importaCorreus': () => withLock_(() => casaImportaCorreus_(p.limit)),
     // Partitures: les mateixes funcions de l'app web "Arxiu de Repertori" (p.fn + p.args)
     'partitures': () => ({ r: partitures_(p.fn, p.args || []) }),
+    // guastevitshirts: els dibuixos en PNG, a la carpeta de Drive "guastevitshirts"
+    'tshirts.list': () => tshirtsList_(),
+    'tshirts.image': () => tshirtsImage_(p.id, p.size),
+    'tshirts.upload': () => withLock_(() => tshirtsUpload_(p.name, p.base64)),
+    'tshirts.rename': () => tshirtsRename_(p.id, p.name),
+    'tshirts.delete': () => tshirtsDelete_(p.id),
   };
 
   const fn = actions[p.action];
@@ -427,6 +433,81 @@ function gOrdena_(obj, total) {
 }
 
 function gArrod_(n) { return Math.round(n * 100) / 100; }
+
+// ---------------------------------------------------------------- guastevitshirts
+
+/** La carpeta "guastevitshirts" de Drive. Si no existeix, es crea la primera vegada. */
+function tshirtsFolder_() {
+  const props = PropertiesService.getScriptProperties();
+  const saved = props.getProperty('TSHIRTS_FOLDER_ID');
+  if (saved) {
+    try {
+      const f = DriveApp.getFolderById(saved);
+      if (!f.isTrashed()) return f;
+    } catch (err) {}
+  }
+  const found = DriveApp.getFoldersByName('guastevitshirts');
+  let folder = null;
+  while (found.hasNext()) {
+    const f = found.next();
+    if (!f.isTrashed()) { folder = f; break; }
+  }
+  if (!folder) folder = DriveApp.createFolder('guastevitshirts');
+  props.setProperty('TSHIRTS_FOLDER_ID', folder.getId());
+  return folder;
+}
+
+function tshirtInfo_(file) {
+  return {
+    id: file.getId(),
+    name: file.getName().replace(/\.png$/i, ''),
+    created: file.getDateCreated().toISOString(),
+    size: file.getSize(),
+  };
+}
+
+function tshirtsList_() {
+  const out = [];
+  const files = tshirtsFolder_().getFiles();
+  while (files.hasNext()) {
+    const file = files.next();
+    if (!file.isTrashed() && /^image\//.test(file.getMimeType())) out.push(tshirtInfo_(file));
+  }
+  out.sort((a, b) => (a.created < b.created ? 1 : -1));
+  return { dibuixos: out };
+}
+
+/** El dibuix en base64. size: thumb (petit, per a la graella) | full (el PNG original). */
+function tshirtsImage_(id, size) {
+  if (!id) throw new Error('Falta el dibuix');
+  let blob = null;
+  if (size === 'thumb') {
+    try { blob = driveThumbnail_(id, THUMB_SIZES.thumb); } catch (err) {}
+  }
+  if (!blob) blob = DriveApp.getFileById(id).getBlob();
+  return { mime: blob.getContentType(), base64: Utilities.base64Encode(blob.getBytes()) };
+}
+
+function tshirtsUpload_(name, base64) {
+  if (!base64) throw new Error('Falta el dibuix');
+  name = String(name || '').trim().replace(/[\/]/g, '-') || ('Dibuix ' + Utilities.formatDate(new Date(), 'Europe/Madrid', 'yyyy-MM-dd HH.mm'));
+  const blob = Utilities.newBlob(Utilities.base64Decode(base64), 'image/png', name + '.png');
+  return { dibuix: tshirtInfo_(tshirtsFolder_().createFile(blob)) };
+}
+
+function tshirtsRename_(id, name) {
+  name = String(name || '').trim().replace(/[\/]/g, '-');
+  if (!id || !name) throw new Error('Falta el nom');
+  const file = DriveApp.getFileById(id);
+  file.setName(name + '.png');
+  return { dibuix: tshirtInfo_(file) };
+}
+
+function tshirtsDelete_(id) {
+  if (!id) throw new Error('Falta el dibuix');
+  DriveApp.getFileById(id).setTrashed(true); // es pot recuperar de la paperera 30 dies
+  return {};
+}
 
 // ---------------------------------------------------------------- fotos
 

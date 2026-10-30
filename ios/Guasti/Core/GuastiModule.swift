@@ -26,6 +26,7 @@ enum ModuleRegistry {
         PartituresModule(),
         XarxesModule(),
         CasaModule(),
+        TshirtsModule(),
     ]
 }
 
