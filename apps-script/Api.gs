@@ -65,6 +65,14 @@ function handle_(p) {
     'gastos.desaFila': () => withLock_(() => gastosDesaFila_(p.taula, p.cols, p.fila, p.taules)),
     'gastos.esborraFila': () => withLock_(() => gastosEsborraFila_(p.taula, p.id, p.taules)),
     'armari.reorder': () => withLock_(() => armariReorder_(p.pieceId, p.ids)),
+    'casa.dades': () => casaDades_(),
+    'casa.desa': () => withLock_(() => casaDesa_(p.registre)),
+    'casa.esborra': () => withLock_(() => casaEsborra_(p.id)),
+    'casa.fet': () => withLock_(() => casaFet_(p.id)),
+    'casa.pujaFitxer': () => withLock_(() => casaPujaFitxer_(p.id, p.nom, p.mime, p.base64)),
+    'casa.treuFitxer': () => withLock_(() => casaTreuFitxer_(p.id, p.fitxerId)),
+    'casa.fitxer': () => casaFitxer_(p.fitxerId),
+    'casa.importaCorreus': () => withLock_(() => casaImportaCorreus_(p.limit)),
     // Partitures: les mateixes funcions de l'app web "Arxiu de Repertori" (p.fn + p.args)
     'partitures': () => ({ r: partitures_(p.fn, p.args || []) }),
     // guastevitshirts: els dibuixos en PNG, a la carpeta de Drive "guastevitshirts"
@@ -654,6 +662,305 @@ function photoFolder_() {
 function trashPhoto_(path) {
   const id = resolvePhoto_(path);
   if (id) DriveApp.getFileById(id).setTrashed(true); // es pot recuperar de la paperera 30 dies
+}
+
+// ---------------------------------------------------------------- casa
+// Gestió de casa: el llibre de manteniment del pis. Tot va en un sol full ("Casa Guasti",
+// pestanya Registre) i els documents en una carpeta de Drive. Tots dos es creen sols el
+// primer cop; els seus ID queden a les propietats de l'script.
+
+const CASA_COLS = ['ID', 'Tipus', 'Data', 'Títol', 'Import', 'Qui', 'Estat', 'Venciment', 'Cada', 'Notes', 'Fitxers', 'Creat', 'Correu'];
+const CASA_TIPUS = ['contracte', 'renda', 'factura', 'reparacio', 'manteniment', 'compra', 'document'];
+
+function casaFolder_() {
+  const props = PropertiesService.getScriptProperties();
+  const saved = props.getProperty('CASA_FOLDER_ID');
+  if (saved) {
+    try { return DriveApp.getFolderById(saved); } catch (err) {}
+  }
+  const found = DriveApp.getFoldersByName('Casa Guasti');
+  const folder = found.hasNext() ? found.next() : DriveApp.createFolder('Casa Guasti');
+  props.setProperty('CASA_FOLDER_ID', folder.getId());
+  return folder;
+}
+
+function casaSheet_() {
+  const props = PropertiesService.getScriptProperties();
+  const saved = props.getProperty('CASA_SHEET_ID');
+  let ss = null;
+  if (saved) {
+    try { ss = SpreadsheetApp.openById(saved); } catch (err) {}
+  }
+  if (!ss) {
+    ss = SpreadsheetApp.create('Casa Guasti');
+    DriveApp.getFileById(ss.getId()).moveTo(casaFolder_());
+    props.setProperty('CASA_SHEET_ID', ss.getId());
+  }
+  let sh = ss.getSheetByName('Registre');
+  if (!sh) {
+    sh = ss.getSheets()[0];
+    sh.setName('Registre');
+  }
+  if (sh.getLastRow() === 0) {
+    // Tot com a text: les dates (aaaa-mm-dd) i els ID no es transformen
+    sh.getRange(1, 1, sh.getMaxRows(), CASA_COLS.length).setNumberFormat('@');
+    sh.getRange(1, 1, 1, CASA_COLS.length).setValues([CASA_COLS]).setFontWeight('bold');
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+function casaRegistres_(sh) {
+  return readObjects_(sh).filter(r => r.ID).map(r => {
+    let fitxers = [];
+    try { fitxers = r.Fitxers ? JSON.parse(r.Fitxers) : []; } catch (err) {}
+    return {
+      id: r.ID, tipus: r.Tipus, data: casaData_(r.Data), titol: r['Títol'], import: r.Import,
+      qui: r.Qui, estat: r.Estat, venciment: casaData_(r.Venciment), cada: r.Cada, notes: r.Notes,
+      fitxers: fitxers, creat: r.Creat,
+    };
+  });
+}
+
+function casaData_(v) {
+  v = String(v || '');
+  if (/^\d{4}-\d{2}-\d{2}T/.test(v)) return Utilities.formatDate(new Date(v), G_TZ, 'yyyy-MM-dd');
+  return v;
+}
+
+function casaDades_() {
+  const sh = casaSheet_();
+  return {
+    avui: Utilities.formatDate(new Date(), G_TZ, 'yyyy-MM-dd'),
+    registres: casaRegistres_(sh),
+    fullUrl: sh.getParent().getUrl(),
+  };
+}
+
+function casaFila_(sh, id) {
+  const t = readTable_(sh);
+  const i = t.rows.findIndex(r => String(r[t.col.ID]) === String(id));
+  if (i < 0) throw new Error("No s'ha trobat el registre");
+  return { t: t, row: i + 2, values: t.rows[i] };
+}
+
+function casaDesa_(r) {
+  r = r || {};
+  const tipus = String(r.tipus || '');
+  if (CASA_TIPUS.indexOf(tipus) < 0) throw new Error('Tipus no vàlid');
+  const sh = casaSheet_();
+  const obj = {
+    'Tipus': tipus,
+    'Data': String(r.data || ''),
+    'Títol': String(r.titol || '').trim(),
+    'Import': String(r.import || '').replace(',', '.').trim(),
+    'Qui': String(r.qui || '').trim(),
+    'Estat': String(r.estat || ''),
+    'Venciment': String(r.venciment || ''),
+    'Cada': String(r.cada || ''),
+    'Notes': String(r.notes || ''),
+  };
+  if (r.id) {
+    const f = casaFila_(sh, r.id);
+    writeRow_(sh, f.t, f.row, obj);
+  } else {
+    obj.ID = newId_();
+    obj.Fitxers = '[]';
+    obj.Creat = Utilities.formatDate(new Date(), G_TZ, 'yyyy-MM-dd HH:mm');
+    appendRow_(sh, readTable_(sh), obj);
+    r.id = obj.ID;
+  }
+  const out = casaDades_();
+  out.id = r.id;
+  return out;
+}
+
+function casaEsborra_(id) {
+  const sh = casaSheet_();
+  const f = casaFila_(sh, id);
+  let fitxers = [];
+  try { fitxers = JSON.parse(f.values[f.t.col.Fitxers] || '[]'); } catch (err) {}
+  // Els documents van a la paperera de Drive (s'hi poden recuperar 30 dies)
+  fitxers.forEach(x => { try { DriveApp.getFileById(x.id).setTrashed(true); } catch (err) {} });
+  sh.deleteRow(f.row);
+  return casaDades_();
+}
+
+/** Manteniment fet avui: la propera vegada és d'aquí a "Cada" mesos. */
+function casaFet_(id) {
+  const sh = casaSheet_();
+  const f = casaFila_(sh, id);
+  const avui = new Date();
+  const mesos = Number(f.values[f.t.col.Cada]) || 0;
+  const obj = { 'Data': Utilities.formatDate(avui, G_TZ, 'yyyy-MM-dd') };
+  if (mesos > 0) {
+    const seg = new Date(avui.getFullYear(), avui.getMonth() + mesos, avui.getDate());
+    obj['Venciment'] = Utilities.formatDate(seg, G_TZ, 'yyyy-MM-dd');
+  }
+  writeRow_(sh, f.t, f.row, obj);
+  return casaDades_();
+}
+
+function casaPujaFitxer_(id, nom, mime, base64) {
+  if (!base64) throw new Error('Falta el fitxer');
+  const sh = casaSheet_();
+  const f = casaFila_(sh, id);
+  const blob = Utilities.newBlob(Utilities.base64Decode(base64), mime || 'application/octet-stream', nom || 'document');
+  const file = casaFolder_().createFile(blob);
+  let fitxers = [];
+  try { fitxers = JSON.parse(f.values[f.t.col.Fitxers] || '[]'); } catch (err) {}
+  fitxers.push({ id: file.getId(), nom: file.getName(), mime: file.getMimeType() });
+  writeRow_(sh, f.t, f.row, { 'Fitxers': JSON.stringify(fitxers) });
+  return casaDades_();
+}
+
+function casaTreuFitxer_(id, fitxerId) {
+  const sh = casaSheet_();
+  const f = casaFila_(sh, id);
+  let fitxers = [];
+  try { fitxers = JSON.parse(f.values[f.t.col.Fitxers] || '[]'); } catch (err) {}
+  fitxers = fitxers.filter(x => x.id !== fitxerId);
+  try { DriveApp.getFileById(fitxerId).setTrashed(true); } catch (err) {}
+  writeRow_(sh, f.t, f.row, { 'Fitxers': JSON.stringify(fitxers) });
+  return casaDades_();
+}
+
+// ---- correus de la propietària: factures i contractes que arriben per Gmail
+
+const CASA_CORREU = 'immasp30@gmail.com';
+
+/** Apartat (i carpeta de Drive) on va cada document, segons el nom del fitxer, l'assumpte i el text. */
+function casaClassifica_(nom, assumpte, text) {
+  const n = String(nom || '').toLowerCase();
+  const a = (String(assumpte || '') + ' ' + String(text || '')).toLowerCase();
+  const prova = s => {
+    if (/aigua|aigües|aguas|sorea|agbar/.test(s)) return { tipus: 'factura', titol: 'Aigua', qui: '', carpeta: 'Aigua' };
+    if (/llum|endesa|electric|luz/.test(s)) return { tipus: 'factura', titol: 'Llum', qui: 'Endesa', carpeta: 'Llum' };
+    if (/naturgy|\bgas\b/.test(s)) return { tipus: 'factura', titol: 'Gas', qui: 'Naturgy', carpeta: 'Gas' };
+    if (/pr[oò]rroga|renovaci|actualitzaci|ipc/.test(s)) return { tipus: 'renda', titol: 'Pròrroga del contracte', qui: '', carpeta: 'Contractes i renovacions' };
+    if (/contracte|contrato|lloguer|alquiler|arrendament/.test(s)) return { tipus: 'contracte', titol: 'Contracte de lloguer', qui: '', carpeta: 'Contractes i renovacions' };
+    return null;
+  };
+  if (/inspecci|revisi/.test(a)) return { tipus: 'document', titol: String(assumpte || nom).replace(/^fwd:\s*/i, '').trim(), qui: '', carpeta: 'Altres documents' };
+  // Primer el nom del fitxer: un correu "Llum i Gas" porta un PDF de cada
+  return prova(n) || prova(a) || { tipus: 'document', titol: String(assumpte || nom || 'Document').trim(), qui: '', carpeta: 'Altres documents' };
+}
+
+function casaSubcarpeta_(nom) {
+  const root = casaFolder_();
+  const it = root.getFoldersByName(nom);
+  return it.hasNext() ? it.next() : root.createFolder(nom);
+}
+
+/** Intenta llegir el total d'una factura en PDF (amb l'OCR de Drive). Si no ho troba, buit. */
+function casaImportDe_(blob) {
+  if (blob.getContentType() !== 'application/pdf') return '';
+  let docId = '';
+  try {
+    const doc = Drive.Files.create({ name: 'tmp-casa-ocr', mimeType: 'application/vnd.google-apps.document' }, blob, { ocrLanguage: 'es' });
+    docId = doc.id;
+    const text = DocumentApp.openById(docId).getBody().getText().replace(/\s+/g, ' ');
+    const pats = [
+      /total\s*(?:a\s*pagar|factura|importe|import)?[^0-9€]{0,40}(\d{1,4}(?:\.\d{3})*,\d{2})\s*€/i,
+      /importe\s*total[^0-9€]{0,40}(\d{1,4}(?:\.\d{3})*,\d{2})/i,
+      /(\d{1,4}(?:\.\d{3})*,\d{2})\s*€/,
+    ];
+    for (const re of pats) {
+      const m = re.exec(text);
+      if (m) return m[1].replace(/\./g, '').replace(',', '.');
+    }
+  } catch (err) {
+  } finally {
+    if (docId) { try { Drive.Files.remove(docId); } catch (err) {} }
+  }
+  return '';
+}
+
+/**
+ * Porta a Casa els adjunts dels correus de la propietària que encara no hi són.
+ * Va per tandes (Apps Script té un límit de temps): torna quants en queden.
+ */
+function casaImportaCorreus_(limit) {
+  const inici = Date.now();
+  const sh = casaSheet_();
+  casaAssegura_(sh);
+  const fets = new Set(readObjects_(sh).map(r => r.Correu).filter(Boolean));
+  const threads = [];
+  for (let start = 0; ; start += 100) {
+    const page = GmailApp.search('from:' + CASA_CORREU + ' has:attachment', start, 100);
+    threads.push.apply(threads, page);
+    if (page.length < 100) break;
+  }
+  let nous = 0;
+  let pendents = 0;
+  const max = Number(limit) || 10;
+  threads.reverse(); // els més antics primer
+  for (const th of threads) {
+    for (const msg of th.getMessages()) {
+      if (msg.getFrom().toLowerCase().indexOf(CASA_CORREU) < 0) continue;
+      const adjunts = msg.getAttachments({ includeInlineImages: false, includeAttachments: true })
+        .filter(b => !/^image\/(png|gif)$/.test(b.getContentType()) || b.getSize() > 30000);
+      adjunts.forEach((blob, i) => {
+        const clau = msg.getId() + '#' + i;
+        if (fets.has(clau)) return;
+        if (nous >= max || Date.now() - inici > 60000) { pendents++; return; }
+        const c = casaClassifica_(blob.getName(), msg.getSubject(), msg.getPlainBody().slice(0, 400));
+        const data = Utilities.formatDate(msg.getDate(), G_TZ, 'yyyy-MM-dd');
+        const file = casaSubcarpeta_(c.carpeta).createFile(blob.copyBlob().setName(data + ' ' + blob.getName()));
+        const imp = c.tipus === 'factura' ? casaImportDe_(blob) : '';
+        appendRow_(sh, readTable_(sh), {
+          'ID': newId_(), 'Tipus': c.tipus, 'Data': data, 'Títol': c.titol, 'Import': imp, 'Qui': c.qui,
+          'Estat': '', 'Venciment': '', 'Cada': '', 'Notes': 'Del correu: ' + msg.getSubject(),
+          'Fitxers': JSON.stringify([{ id: file.getId(), nom: file.getName(), mime: file.getMimeType() }]),
+          'Creat': Utilities.formatDate(new Date(), G_TZ, 'yyyy-MM-dd HH:mm'), 'Correu': clau,
+        });
+        fets.add(clau);
+        nous++;
+      });
+    }
+  }
+  casaProgramaAutomatic_();
+  const out = casaDades_();
+  out.nous = nous;
+  out.pendents = pendents;
+  return out;
+}
+
+/** Afegeix les columnes que falten (p. ex. Correu) a un full creat amb una versió anterior. */
+function casaAssegura_(sh) {
+  const t = readTable_(sh);
+  const falten = CASA_COLS.filter(c => t.col[c] === undefined);
+  if (!falten.length) return;
+  const from = t.headers.length + 1;
+  sh.getRange(1, from, sh.getMaxRows(), falten.length).setNumberFormat('@');
+  sh.getRange(1, from, 1, falten.length).setValues([falten]).setFontWeight('bold');
+}
+
+/** Cada dia, a primera hora, mira si han arribat factures noves. */
+function casaProgramaAutomatic_() {
+  const ja = ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'casaImportaCorreusAuto');
+  if (!ja) ScriptApp.newTrigger('casaImportaCorreusAuto').timeBased().everyDays(1).atHour(7).create();
+}
+
+function casaImportaCorreusAuto() {
+  withLock_(() => casaImportaCorreus_(40));
+}
+
+function casaFitxer_(fitxerId) {
+  // Només fitxers de la carpeta de Casa: la clau no ha de servir per llegir qualsevol cosa del Drive
+  const file = DriveApp.getFileById(fitxerId);
+  const folderId = casaFolder_().getId();
+  let dins = false;
+  const parents = file.getParents();
+  while (parents.hasNext()) {
+    const p = parents.next();
+    if (p.getId() === folderId) dins = true;
+    const gp = p.getParents();
+    while (gp.hasNext()) { if (gp.next().getId() === folderId) dins = true; }
+  }
+  if (!dins) throw new Error('Aquest fitxer no és de Casa');
+  const blob = file.getBlob();
+  return { nom: file.getName(), mime: blob.getContentType(), base64: Utilities.base64Encode(blob.getBytes()) };
 }
 
 // ---------------------------------------------------------------- fulls

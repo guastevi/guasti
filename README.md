@@ -53,6 +53,12 @@ Pantalles natives per publicar alhora a l'Instagram i al Facebook de l'Auditori 
 
 **A Guasti:** obre Xarxes, toca **Connecta** i enganxa l'enllaç de l'app del publicador (el que acaba en `?k=…`). Es desa al Keychain de l'iPhone, mai al codi.
 
+## Secció Pis de Lloguer (gestió de casa)
+
+El llibre de manteniment del pis: contracte de lloguer, renovacions i renda, factures i subministraments, reparacions, manteniment, compres per a casa i documents importants. A l'inici hi ha la renda d'ara, quan s'acaba el contracte, la propera actualització de renda i una llista del que està pendent (manteniment que toca, reparacions obertes, garanties i documents que caduquen). Cada registre pot portar fotos o PDF.
+
+Les dades van al full **Casa Guasti** (pestanya *Registre*) i els documents a la carpeta **Casa Guasti** del Drive. La Guasti API els crea sola el primer cop que obres la secció.
+
 ## Secció guastevitshirts (dibuixos)
 
 Galeria dels teus dibuixos en PNG. Es guarden a la carpeta **guastevitshirts** del teu Drive (la Guasti API la crea sola el primer cop). Des de l'app: pujar des de Fotos o Fitxers (els PNG es pugen tal qual, amb la transparència), cercar per nom, ordenar, canviar el fons (clar, fosc o quadrícula), zoom, compartir el PNG original, canviar el nom i eliminar (va a la paperera del Drive). També pots deixar PNG directament a la carpeta de Drive i apareixeran a l'app.
