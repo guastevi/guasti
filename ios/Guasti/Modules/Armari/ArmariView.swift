@@ -451,24 +451,32 @@ struct PecaCell: View {
 /// Les fotos d'una peça a la graella: es passen lliscant (davant, darrere…), amb puntets a sota.
 struct PhotoStrip: View {
     let fotos: [Foto]
-    @State private var index = 0
+    @State private var index: Int? = 0
 
     var body: some View {
         if fotos.count < 2 {
             DrivePhoto(path: fotos.first?.path ?? "", size: .thumb)
         } else {
-            TabView(selection: $index) {
-                ForEach(Array(fotos.enumerated()), id: \.element.id) { i, foto in
-                    DrivePhoto(path: foto.path, size: .thumb)
-                        .tag(i)
+            ScrollView(.horizontal) {
+                LazyHStack(spacing: 0) {
+                    ForEach(Array(fotos.enumerated()), id: \.element.id) { i, foto in
+                        Color.clear
+                            .containerRelativeFrame([.horizontal, .vertical])
+                            .overlay(DrivePhoto(path: foto.path, size: .thumb))
+                            .clipped()
+                            .id(i)
+                    }
                 }
+                .scrollTargetLayout()
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
+            .scrollTargetBehavior(.paging)
+            .scrollIndicators(.hidden)
+            .scrollPosition(id: $index)
             .overlay(alignment: .bottom) {
                 HStack(spacing: 4) {
                     ForEach(fotos.indices, id: \.self) { i in
                         Circle()
-                            .fill(i == index ? Theme.accent : Color.black.opacity(0.25))
+                            .fill(i == (index ?? 0) ? Theme.accent : Color.black.opacity(0.25))
                             .frame(width: 5, height: 5)
                     }
                 }

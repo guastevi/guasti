@@ -17,13 +17,14 @@ struct GastosModule: GuastiModule {
 /// L'app "Finances" de Gastos: Afegir, Resum i Moviments, com a la web.
 struct GastosView: View {
     enum Vista: String, CaseIterable {
-        case afegir, resum, moviments
+        case afegir, resum, moviments, futur
 
         var title: String {
             switch self {
             case .afegir: return "Afegir"
             case .resum: return "Resum"
             case .moviments: return "Moviments"
+            case .futur: return "Futur"
             }
         }
 
@@ -32,6 +33,7 @@ struct GastosView: View {
             case .afegir: return "plus.circle"
             case .resum: return "chart.bar"
             case .moviments: return "list.bullet"
+            case .futur: return "chart.line.uptrend.xyaxis"
             }
         }
     }
@@ -56,6 +58,7 @@ struct GastosView: View {
                         case .afegir: GastosAfegir(dades: d, showToast: show)
                         case .resum: GastosResumView(resum: d.resum, evolucio: d.evolucio)
                         case .moviments: GastosMoviments(moviments: d.moviments, showToast: show)
+                        case .futur: GastosFutur(showToast: show)
                         }
                     } else if let error = store.errorMessage {
                         Text("No s'han pogut carregar les dades.\n\(error)")
@@ -73,7 +76,9 @@ struct GastosView: View {
                 .padding(.bottom, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .refreshable { await store.load(store.dades?.mes) }
+            .refreshable {
+                if vista == .futur { await FuturStore.shared.load() } else { await store.load(store.dades?.mes) }
+            }
             nav
         }
         .background(Fin.bg.ignoresSafeArea())
@@ -94,7 +99,7 @@ struct GastosView: View {
                 .font(.system(size: 24, weight: .heavy))
                 .tracking(-0.24)
             Spacer()
-            if let d = store.dades {
+            if let d = store.dades, vista != .futur {
                 Menu {
                     Picker("Mes", selection: Binding(get: { d.mes }, set: { m in Task { await store.load(m) } })) {
                         ForEach(d.mesos, id: \.self) { Text(Fin.nomMes($0)).tag($0) }
