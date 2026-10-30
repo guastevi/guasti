@@ -6,7 +6,8 @@ struct CasaModule: GuastiModule {
     let title = "Pis de Lloguer"
     let subtitle = "Gestió de casa"
     let systemImage = "house.fill"
-    let tint = CasaTheme.green
+    let tint = Color.white
+    let tileText = CasaTheme.green
     let isAvailable = true
 
     @MainActor func makeRootView() -> AnyView {

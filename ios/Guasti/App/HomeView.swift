@@ -88,13 +88,14 @@ private struct ModuleTile: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(module.tileText)
         .padding(12)
         .frame(maxWidth: .infinity, minHeight: 88, alignment: .leading)
         .background(
             LinearGradient(colors: [module.tint, module.tint.opacity(0.7)], startPoint: .topLeading, endPoint: .bottomTrailing),
             in: RoundedRectangle(cornerRadius: 16, style: .continuous)
         )
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.primary.opacity(module.tileText == .white ? 0 : 0.15)))
         .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }

@@ -12,11 +12,14 @@ protocol GuastiModule {
     var isAvailable: Bool { get }
     /// Logo (imatge de l'Assets) que substitueix la icona a la pantalla d'inici.
     var logo: String? { get }
+    /// Color del text i la icona del quadre de l'inici (blanc si no es diu res).
+    var tileText: Color { get }
     @MainActor func makeRootView() -> AnyView
 }
 
 extension GuastiModule {
     var logo: String? { nil }
+    var tileText: Color { .white }
 }
 
 enum ModuleRegistry {
