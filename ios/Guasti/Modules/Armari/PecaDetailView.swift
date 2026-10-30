@@ -10,7 +10,6 @@ struct PecaDetailView: View {
     @State private var busy = false
     @State private var errorText: String?
     @State private var viewing: Foto?
-    @State private var page: Int? = 0
     @State private var confirmDelete = false
 
     var body: some View {
@@ -129,41 +128,20 @@ struct PecaDetailView: View {
             }
             .aspectRatio(4 / 3, contentMode: .fit)
         } else {
-            VStack(spacing: 10) {
-                // Fotos que es passen lliscant. Abans era un TabView dins la llista, que a vegades
-                // deixava la pantalla encallada; un ScrollView amb pàgines no té aquest problema.
-                Color.clear
-                    .aspectRatio(3 / 4, contentMode: .fit)
-                    .overlay {
-                        ScrollView(.horizontal) {
-                            LazyHStack(spacing: 0) {
-                                ForEach(Array(fotos.enumerated()), id: \.element.id) { i, foto in
-                                    Color.clear
-                                        .containerRelativeFrame([.horizontal, .vertical])
-                                        .overlay(DrivePhoto(path: foto.path, size: .medium))
-                                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                                        .contentShape(Rectangle())
-                                        .onTapGesture { viewing = foto }
-                                        .overlay(alignment: .bottomLeading) { tag(foto, isCover: i == 0) }
-                                        .id(i)
-                                }
-                            }
-                            .scrollTargetLayout()
-                        }
-                        .scrollTargetBehavior(.paging)
-                        .scrollIndicators(.hidden)
-                        .scrollPosition(id: $page)
-                    }
-                if fotos.count > 1 {
-                    HStack(spacing: 6) {
-                        ForEach(fotos.indices, id: \.self) { i in
-                            Circle()
-                                .fill(i == (page ?? 0) ? Color.primary : Color.secondary.opacity(0.35))
-                                .frame(width: 6, height: 6)
-                        }
-                    }
+            // Totes les fotos de cop (davant, darrere…), petites. Tocant-ne una s'obre en gran.
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8),
+                                GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                ForEach(Array(fotos.enumerated()), id: \.element.id) { i, foto in
+                    Color.clear
+                        .aspectRatio(3 / 4, contentMode: .fit)
+                        .overlay(DrivePhoto(path: foto.path, size: .medium))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .contentShape(Rectangle())
+                        .onTapGesture { viewing = foto }
+                        .overlay(alignment: .bottomLeading) { tag(foto, isCover: i == 0) }
                 }
             }
+            .padding(.vertical, 4)
         }
     }
 
@@ -173,28 +151,27 @@ struct PecaDetailView: View {
             if isCover {
                 Text("Portada")
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
                     .background(Theme.accent, in: Capsule())
             } else if !foto.id.hasPrefix("portada-") {
                 Button {
                     run {
                         try await store.setCover(foto)
-                        page = 0
                     }
                 } label: {
-                    Text("Fes-la portada")
+                    Text("Portada?")
                         .foregroundStyle(.white)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
                         .background(Color.black.opacity(0.6), in: Capsule())
                 }
                 .buttonStyle(.plain)
                 .disabled(busy)
             }
         }
-        .font(Theme.body(12, relativeTo: .caption))
-        .padding(12)
+        .font(Theme.body(10, relativeTo: .caption2))
+        .padding(6)
     }
 
     private func chips(_ peca: Peca) -> some View {
@@ -241,7 +218,9 @@ struct PhotoViewer: View {
         ZStack(alignment: .topTrailing) {
             Color.black.ignoresSafeArea()
             DrivePhoto(path: path, size: .full, contentMode: .fit)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .scaleEffect(scale)
+                .clipped()
                 .gesture(
                     MagnificationGesture()
                         .onChanged { scale = max(1, lastScale * $0) }
@@ -254,12 +233,14 @@ struct PhotoViewer: View {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.largeTitle)
-                    .symbolRenderingMode(.hierarchical)
+                Image(systemName: "xmark")
+                    .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(.white)
-                    .padding()
+                    .frame(width: 44, height: 44)
+                    .background(Color.black.opacity(0.6), in: Circle())
+                    .padding(16)
             }
+            .zIndex(1)
             .accessibilityLabel("Tanca")
         }
     }
