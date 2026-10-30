@@ -118,7 +118,7 @@ struct ArmariView: View {
     @AppStorage("armari.sort") private var sort: ArmariSort = .armari
 
     private static let calcat = "__calcat"
-    private let columns = [GridItem(.adaptive(minimum: 150), spacing: 14)]
+    private let columns = [GridItem(.adaptive(minimum: 104), spacing: 10)]
 
     private var visible: [Peca] { store.peces.filter { showPrivate || !$0.isPrivate } }
 
@@ -242,7 +242,7 @@ struct ArmariView: View {
             .padding(.horizontal)
             .padding(.top, 8)
 
-            LazyVGrid(columns: columns, spacing: 14) {
+            LazyVGrid(columns: columns, spacing: 12) {
                 ForEach(filtered) { peca in
                     NavigationLink {
                         PecaDetailView(pecaID: peca.id)
@@ -424,7 +424,7 @@ struct PecaCell: View {
             Color.clear
                 .aspectRatio(3 / 4, contentMode: .fit)
                 .overlay(PhotoStrip(fotos: fotos))
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
                 .overlay(alignment: .topLeading) {
                     if peca.isPrivate {
                         Text("Privada")
@@ -437,10 +437,10 @@ struct PecaCell: View {
                     }
                 }
             Text(peca.nom.isEmpty ? "Sense nom" : peca.nom)
-                .font(Theme.body(15, weight: .semibold, relativeTo: .subheadline))
+                .font(Theme.body(13, weight: .semibold, relativeTo: .subheadline))
                 .lineLimit(2)
             Text([peca.talla.isEmpty ? "" : "Talla \(peca.talla)", peca.ubicacio].filter { !$0.isEmpty }.joined(separator: " · "))
-                .font(Theme.body(12, relativeTo: .caption))
+                .font(Theme.body(11, relativeTo: .caption))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
