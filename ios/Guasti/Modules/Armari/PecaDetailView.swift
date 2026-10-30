@@ -10,7 +10,7 @@ struct PecaDetailView: View {
     @State private var busy = false
     @State private var errorText: String?
     @State private var viewing: Foto?
-    @State private var page = 0
+    @State private var page: Int? = 0
     @State private var confirmDelete = false
 
     var body: some View {
@@ -130,25 +130,35 @@ struct PecaDetailView: View {
             .aspectRatio(4 / 3, contentMode: .fit)
         } else {
             VStack(spacing: 10) {
-                TabView(selection: $page) {
-                    ForEach(Array(fotos.enumerated()), id: \.element.id) { i, foto in
-                        DrivePhoto(path: foto.path, size: .medium)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                            .contentShape(Rectangle())
-                            .onTapGesture { viewing = foto }
-                            .overlay(alignment: .bottomLeading) { tag(foto, isCover: i == 0) }
-                            .padding(.horizontal, 2)
-                            .tag(i)
+                // Fotos que es passen lliscant. Abans era un TabView dins la llista, que a vegades
+                // deixava la pantalla encallada; un ScrollView amb pàgines no té aquest problema.
+                Color.clear
+                    .aspectRatio(3 / 4, contentMode: .fit)
+                    .overlay {
+                        ScrollView(.horizontal) {
+                            LazyHStack(spacing: 0) {
+                                ForEach(Array(fotos.enumerated()), id: \.element.id) { i, foto in
+                                    Color.clear
+                                        .containerRelativeFrame([.horizontal, .vertical])
+                                        .overlay(DrivePhoto(path: foto.path, size: .medium))
+                                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                        .contentShape(Rectangle())
+                                        .onTapGesture { viewing = foto }
+                                        .overlay(alignment: .bottomLeading) { tag(foto, isCover: i == 0) }
+                                        .id(i)
+                                }
+                            }
+                            .scrollTargetLayout()
+                        }
+                        .scrollTargetBehavior(.paging)
+                        .scrollIndicators(.hidden)
+                        .scrollPosition(id: $page)
                     }
-                }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-                .aspectRatio(3 / 4, contentMode: .fit)
                 if fotos.count > 1 {
                     HStack(spacing: 6) {
                         ForEach(fotos.indices, id: \.self) { i in
                             Circle()
-                                .fill(i == page ? Color.primary : Color.secondary.opacity(0.35))
+                                .fill(i == (page ?? 0) ? Color.primary : Color.secondary.opacity(0.35))
                                 .frame(width: 6, height: 6)
                         }
                     }
