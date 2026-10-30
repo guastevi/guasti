@@ -3,6 +3,19 @@ import SwiftUI
 struct HomeView: View {
     @ObservedObject private var connection = Connection.shared
     @State private var showSettings = false
+    /// Ordre dels quadres de l'inici, triat per l'usuària (ids separats per comes).
+    @AppStorage("homeOrder") private var orderRaw = ""
+    @State private var dragging: String?
+
+    /// Les seccions en l'ordre desat; les noves (encara no ordenades) van al final.
+    private var ordered: [any GuastiModule] {
+        let order = orderRaw.split(separator: ",").map(String.init)
+        return ModuleRegistry.all.enumerated().sorted { a, b in
+            let ia = order.firstIndex(of: a.element.id) ?? order.count + a.offset
+            let ib = order.firstIndex(of: b.element.id) ?? order.count + b.offset
+            return ia < ib
+        }.map(\.element)
+    }
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 3)
 
@@ -25,21 +38,39 @@ struct HomeView: View {
         }
     }
 
+    /// Posa la secció arrossegada al lloc de la secció de sota el dit, i desa l'ordre.
+    private func move(_ id: String, to target: String) {
+        var ids = ordered.map(\.id)
+        guard id != target, let from = ids.firstIndex(of: id), let to = ids.firstIndex(of: target) else { return }
+        ids.remove(at: from)
+        ids.insert(id, at: to)
+        withAnimation(.snappy) { orderRaw = ids.joined(separator: ",") }
+    }
+
     private var modules: some View {
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 10) {
-                    ForEach(ModuleRegistry.all, id: \.id) { module in
-                        if module.isAvailable {
-                            NavigationLink {
-                                module.makeRootView()
-                            } label: {
+                    ForEach(ordered, id: \.id) { module in
+                        Group {
+                            if module.isAvailable {
+                                NavigationLink {
+                                    module.makeRootView()
+                                } label: {
+                                    ModuleTile(module: module)
+                                }
+                                .buttonStyle(.plain)
+                            } else {
                                 ModuleTile(module: module)
+                                    .opacity(0.45)
                             }
-                            .buttonStyle(.plain)
-                        } else {
-                            ModuleTile(module: module)
-                                .opacity(0.45)
                         }
+                        // Mantenint premut un quadre es pot arrossegar a un altre lloc
+                        .opacity(dragging == module.id ? 0.5 : 1)
+                        .onDrag {
+                            dragging = module.id
+                            return NSItemProvider(object: module.id as NSString)
+                        }
+                        .onDrop(of: [.text], delegate: TileDrop(target: module.id, dragging: $dragging, move: move))
                     }
                 }
                 .padding()
@@ -61,6 +92,23 @@ struct HomeView: View {
             .onAppear {
                 if !connection.isConfigured { showSettings = true }
             }
+    }
+}
+
+private struct TileDrop: DropDelegate {
+    let target: String
+    @Binding var dragging: String?
+    let move: (String, String) -> Void
+
+    func dropEntered(info: DropInfo) {
+        if let dragging { move(dragging, target) }
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
+
+    func performDrop(info: DropInfo) -> Bool {
+        dragging = nil
+        return true
     }
 }
 
