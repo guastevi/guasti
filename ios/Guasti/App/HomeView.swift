@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct HomeView: View {
     @ObservedObject private var connection = Connection.shared
@@ -74,6 +75,11 @@ struct HomeView: View {
                     }
                 }
                 .padding()
+            }
+            // Si es deixa anar fora d'un quadre, també s'acaba l'arrossegament
+            .onDrop(of: [.text], isTargeted: nil) { _ in
+                dragging = nil
+                return true
             }
             .navigationTitle("Guasti")
             .toolbar {
