@@ -7,7 +7,7 @@ struct TshirtsModule: GuastiModule {
     let title = "guastevitshirts"
     let subtitle = "Els meus dibuixos"
     let systemImage = "paintbrush.pointed.fill"
-    let tint = Theme.accent
+    let tint = Color(UIColor(hex: 0xC9962B)) // groc ocre
     let isAvailable = true
 
     @MainActor func makeRootView() -> AnyView {
