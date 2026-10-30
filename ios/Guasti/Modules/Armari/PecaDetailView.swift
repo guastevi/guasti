@@ -220,7 +220,7 @@ struct PhotoViewer: View {
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            Color.black.opacity(1 - min(abs(drag) / 400, 0.6)).ignoresSafeArea()
+            Color.black.opacity(1 - min(Double(abs(drag)) / 400, 0.6)).ignoresSafeArea()
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 0) {
                     ForEach(fotos) { foto in
