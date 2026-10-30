@@ -110,7 +110,7 @@ struct PecaDetailView: View {
             Text("Les fotos aniran a la paperera de Drive.")
         }
         .fullScreenCover(item: $viewing) { foto in
-            PhotoViewer(path: foto.path)
+            PhotoViewer(fotos: fotos, start: foto.id)
         }
         .alert("No s'ha pogut fer", isPresented: Binding(get: { errorText != nil }, set: { if !$0 { errorText = nil } })) {
             Button("D'acord", role: .cancel) {}
@@ -208,28 +208,46 @@ struct PecaDetailView: View {
 }
 
 /// Foto a pantalla completa, amb zoom.
+/// Fotos a pantalla sencera: es passen lliscant de costat, es tanquen amb la creu o lliscant cap avall,
+/// i amb dos dits (o doble toc) s'amplien.
 struct PhotoViewer: View {
-    let path: String
+    let fotos: [Foto]
+    let start: String
     @Environment(\.dismiss) private var dismiss
-    @State private var scale: CGFloat = 1
-    @State private var lastScale: CGFloat = 1
+    @State private var current: String?
+    @State private var drag: CGFloat = 0
+    @State private var zoomed = false
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            Color.black.ignoresSafeArea()
-            DrivePhoto(path: path, size: .full, contentMode: .fit)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .scaleEffect(scale)
-                .clipped()
-                .gesture(
-                    MagnificationGesture()
-                        .onChanged { scale = max(1, lastScale * $0) }
-                        .onEnded { _ in lastScale = scale }
-                )
-                .onTapGesture(count: 2) {
-                    withAnimation { scale = scale > 1 ? 1 : 2.5 }
-                    lastScale = scale
+            Color.black.opacity(1 - min(abs(drag) / 400, 0.6)).ignoresSafeArea()
+            ScrollView(.horizontal) {
+                LazyHStack(spacing: 0) {
+                    ForEach(fotos) { foto in
+                        ZoomablePhoto(path: foto.path, zoomed: $zoomed)
+                            .containerRelativeFrame([.horizontal, .vertical])
+                            .id(foto.id)
+                    }
                 }
+                .scrollTargetLayout()
+            }
+            .scrollTargetBehavior(.paging)
+            .scrollIndicators(.hidden)
+            .scrollDisabled(zoomed)
+            .scrollPosition(id: $current)
+            .offset(y: drag)
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 20)
+                    .onChanged { v in
+                        guard !zoomed, abs(v.translation.height) > abs(v.translation.width) else { return }
+                        drag = max(0, v.translation.height)
+                    }
+                    .onEnded { v in
+                        if !zoomed, v.translation.height > 120 { dismiss() } else { withAnimation { drag = 0 } }
+                    }
+            )
+            .ignoresSafeArea()
+
             Button {
                 dismiss()
             } label: {
@@ -242,6 +260,47 @@ struct PhotoViewer: View {
             }
             .zIndex(1)
             .accessibilityLabel("Tanca")
+
+            if fotos.count > 1 {
+                HStack(spacing: 6) {
+                    ForEach(fotos) { f in
+                        Circle()
+                            .fill(f.id == (current ?? start) ? Color.white : Color.white.opacity(0.35))
+                            .frame(width: 7, height: 7)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                .padding(.bottom, 24)
+                .allowsHitTesting(false)
+            }
         }
+        .onAppear { current = start }
+    }
+}
+
+private struct ZoomablePhoto: View {
+    let path: String
+    @Binding var zoomed: Bool
+    @State private var scale: CGFloat = 1
+    @State private var lastScale: CGFloat = 1
+
+    var body: some View {
+        DrivePhoto(path: path, size: .full, contentMode: .fit)
+            .scaleEffect(scale)
+            .clipped()
+            .contentShape(Rectangle())
+            .onTapGesture(count: 2) {
+                withAnimation { scale = scale > 1 ? 1 : 2.5 }
+                lastScale = scale
+                zoomed = scale > 1
+            }
+            .gesture(
+                MagnificationGesture()
+                    .onChanged { scale = max(1, lastScale * $0) }
+                    .onEnded { _ in
+                        lastScale = scale
+                        zoomed = scale > 1
+                    }
+            )
     }
 }
