@@ -53,6 +53,10 @@ Pantalles natives per publicar alhora a l'Instagram i al Facebook de l'Auditori 
 
 **A Guasti:** obre Xarxes, toca **Connecta** i enganxa l'enllaç de l'app del publicador (el que acaba en `?k=…`). Es desa al Keychain de l'iPhone, mai al codi.
 
+## Secció guastevitshirts (dibuixos)
+
+Galeria dels teus dibuixos en PNG. Es guarden a la carpeta **guastevitshirts** del teu Drive (la Guasti API la crea sola el primer cop). Des de l'app: pujar des de Fotos o Fitxers (els PNG es pugen tal qual, amb la transparència), cercar per nom, ordenar, canviar el fons (clar, fosc o quadrícula), zoom, compartir el PNG original, canviar el nom i eliminar (va a la paperera del Drive). També pots deixar PNG directament a la carpeta de Drive i apareixeran a l'app.
+
 ## Afegir una secció nova
 
 1. Crea `ios/Guasti/Modules/<Nom>/` amb un tipus que compleixi `GuastiModule`.
