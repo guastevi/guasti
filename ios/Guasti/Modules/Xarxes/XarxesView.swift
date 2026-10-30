@@ -202,6 +202,13 @@ struct PublicadorSetupView: View {
     private func provar() async {
         provant = true
         defer { provant = false }
+        // Si l'enllaç nou no porta ?k=, hi posem la clau de l'enllaç que ja hi havia desat
+        if Publicador.client(for: link) == nil, let antic = publicador.client,
+           var parts = URLComponents(string: link.trimmingCharacters(in: .whitespacesAndNewlines)),
+           parts.queryItems?.contains(where: { $0.name == "k" }) != true {
+            parts.queryItems = (parts.queryItems ?? []) + [URLQueryItem(name: "k", value: antic.clau)]
+            if let complet = parts.string { link = complet }
+        }
         guard let client = Publicador.client(for: link) else {
             resultat = "L'enllaç no és vàlid. Ha de començar per https://script.google.com i acabar en ?k=…"
             return
