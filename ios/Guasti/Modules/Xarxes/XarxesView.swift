@@ -1,105 +1,159 @@
 import SwiftUI
-import WebKit
+import UIKit
 
 struct XarxesModule: GuastiModule {
     let id = "xarxes"
     let title = "Xarxes"
-    let subtitle = "Publicador Auditori"
+    let subtitle = "Instagram i Facebook"
     let systemImage = "paperplane.fill"
-    let tint = Color(UIColor(hex: 0x9A7400))
+    let tint = Xar.lila
     let isAvailable = true
+    let logo: String? = "LogoAuditori"
 
     @MainActor func makeRootView() -> AnyView {
         AnyView(XarxesView())
     }
 }
 
-/// L'enllaç de l'app web del publicador (Apps Script). Porta la clau ?k=, per això va al Keychain.
-@MainActor
-final class Publicador: ObservableObject {
-    static let shared = Publicador()
-
-    @Published var link: String {
-        didSet { Keychain.set(link, for: "publicadorURL") }
-    }
-
-    private init() {
-        link = Keychain.get("publicadorURL") ?? ""
-    }
-
-    var url: URL? { Self.parse(link) }
-
-    static func parse(_ text: String) -> URL? {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let url = URL(string: trimmed), url.scheme == "https",
-              let host = url.host, host == "script.google.com" || host.hasSuffix(".google.com") else { return nil }
-        return url
-    }
-}
-
-/// El publicador de l'Auditori (Instagram i Facebook) dins de Guasti: és la mateixa app web, en una vista web.
+/// El publicador de l'Auditori: publicar alhora a Instagram i a la pàgina de Facebook.
+/// Fa servir el mateix Apps Script que la web, a través d'ApiGuasti.gs.
 struct XarxesView: View {
+    enum Vista: String, CaseIterable {
+        case nova, historial
+
+        var title: String { self == .nova ? "Nova" : "Historial" }
+        var icon: String { self == .nova ? "square.and.pencil" : "clock" }
+    }
+
     @ObservedObject private var publicador = Publicador.shared
-    @Environment(\.openURL) private var openURL
-    @State private var editing = false
-    @State private var reload = 0
-    @State private var loading = true
-    @State private var needsLogin = false
+    @ObservedObject private var store = XarxesStore.shared
+    @State private var vista: Vista = .nova
+    @State private var connectant = false
 
     var body: some View {
-        Group {
-            if let url = publicador.url {
-                PublicadorWebView(url: url, reload: reload, loading: $loading, needsLogin: $needsLogin)
-                    .ignoresSafeArea(edges: .bottom)
-                    .overlay {
-                        if loading { ProgressView().tint(.yellow).controlSize(.large) }
-                    }
+        VStack(spacing: 0) {
+            header
+            if publicador.client == nil {
+                senseConnexio
             } else {
-                ContentUnavailableView {
-                    Label("Publicador de l'Auditori", systemImage: "paperplane")
-                } description: {
-                    Text("Enganxa l'enllaç de l'app del publicador (el que acaba en ?k=…) i ja el tindràs aquí.")
-                } actions: {
-                    Button("Afegeix l'enllaç") { editing = true }
-                        .buttonStyle(.borderedProminent)
+                ScrollView {
+                    Group {
+                        switch vista {
+                        case .nova: XarxesNova()
+                        case .historial: XarxesHistorial()
+                        }
+                    }
+                    .frame(maxWidth: 560)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 24)
+                    .frame(maxWidth: .infinity)
                 }
+                .scrollDismissesKeyboard(.interactively)
+                .refreshable {
+                    if vista == .historial { await store.carregarHistorial() } else { await store.carregarFragments() }
+                }
+                nav
             }
         }
-        .background(Color.black)
-        .navigationTitle("Xarxes")
+        .background(Xar.bg.ignoresSafeArea())
+        .foregroundStyle(Xar.text)
+        .tint(Xar.accent)
+        .environment(\.colorScheme, .dark)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Xar.bg, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    if let url = publicador.url {
-                        Button { reload += 1 } label: { Label("Refresca", systemImage: "arrow.clockwise") }
-                        Button { openURL(url) } label: { Label("Obre a Safari", systemImage: "safari") }
-                    }
-                    Button { editing = true } label: { Label("Canvia l'enllaç", systemImage: "link") }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                }
-                .accessibilityLabel("Opcions")
+                Button { connectant = true } label: { Image(systemName: "gearshape") }
+                    .accessibilityLabel("Connexió amb el publicador")
             }
         }
-        .sheet(isPresented: $editing) {
+        .sheet(isPresented: $connectant) {
             NavigationStack { PublicadorSetupView() }
         }
-        .alert("Cal un compte de Google", isPresented: $needsLogin) {
-            if let url = publicador.url {
-                Button("Obre a Safari") { openURL(url) }
-            }
-            Button("D'acord", role: .cancel) {}
-        } message: {
-            Text("El publicador demana iniciar sessió, i Google no ho deixa fer dins d'altres apps. A l'editor d'Apps Script, a Gestiona les implementacions, posa «Qui hi té accés: Qualsevol usuari». Mentrestant, obre'l a Safari.")
+        .task { if store.fragments.isEmpty { await store.carregarFragments() } }
+        .onChange(of: vista) { _, v in
+            if v == .historial { Task { await store.carregarHistorial() } }
         }
+    }
+
+    private var header: some View {
+        HStack(spacing: 12) {
+            Image("LogoAuditori")
+                .resizable()
+                .scaledToFit()
+                .frame(height: 34)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 4)
+                .background(.white, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .accessibilityLabel("Auditori Josep Carreras")
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Publicar a xarxes")
+                    .font(.system(size: 20, weight: .heavy))
+                Text("Instagram i Facebook de l'Auditori")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Xar.muted)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 4)
+        .padding(.bottom, 10)
+    }
+
+    private var senseConnexio: some View {
+        VStack(spacing: 14) {
+            Spacer()
+            Image(systemName: "link")
+                .font(.system(size: 36, weight: .semibold))
+                .foregroundStyle(Xar.accent)
+            Text("Connecta el publicador")
+                .font(.system(size: 20, weight: .bold))
+            Text("Només cal fer-ho un cop: enganxa l'enllaç de l'app del publicador, el que acaba en ?k=…")
+                .font(.system(size: 15))
+                .foregroundStyle(Xar.muted)
+                .multilineTextAlignment(.center)
+            Button("Connecta") { connectant = true }
+                .buttonStyle(XarBoto())
+                .frame(maxWidth: 260)
+            Spacer()
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity)
+    }
+
+    private var nav: some View {
+        HStack {
+            ForEach(Vista.allCases, id: \.self) { v in
+                Button {
+                    vista = v
+                } label: {
+                    VStack(spacing: 3) {
+                        Image(systemName: v.icon).font(.system(size: 22))
+                        Text(v.title).font(.system(size: 13, weight: .semibold))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(6)
+                    .foregroundStyle(vista == v ? Xar.accent : Xar.muted)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.top, 8)
+        .background(Xar.card.ignoresSafeArea(edges: .bottom))
+        .overlay(alignment: .top) { Rectangle().fill(Xar.line).frame(height: 1) }
     }
 }
 
-private struct PublicadorSetupView: View {
+/// Enganxar l'enllaç del publicador i comprovar que respon.
+struct PublicadorSetupView: View {
     @ObservedObject private var publicador = Publicador.shared
     @Environment(\.dismiss) private var dismiss
     @State private var link = ""
+    @State private var provant = false
+    @State private var resultat: String?
 
     var body: some View {
         Form {
@@ -114,104 +168,99 @@ private struct PublicadorSetupView: View {
             } footer: {
                 Text("És l'enllaç de l'app que fa servir l'equip, amb la clau ?k= al final. Es desa només en aquest iPhone.")
             }
+
+            Section {
+                Button {
+                    Task { await provar() }
+                } label: {
+                    HStack {
+                        Text("Prova i desa")
+                        if provant {
+                            Spacer()
+                            ProgressView()
+                        }
+                    }
+                }
+                .disabled(provant || link.isEmpty)
+
+                if let resultat {
+                    Text(resultat)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
         .navigationTitle("Publicador")
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Tanca") { dismiss() }
             }
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Desa") {
-                    publicador.link = link.trimmingCharacters(in: .whitespacesAndNewlines)
-                    dismiss()
-                }
-                .disabled(!link.isEmpty && Publicador.parse(link) == nil)
-            }
         }
         .onAppear { link = publicador.link }
     }
+
+    private func provar() async {
+        provant = true
+        defer { provant = false }
+        guard let client = Publicador.client(for: link) else {
+            resultat = "L'enllaç no és vàlid. Ha de començar per https://script.google.com i acabar en ?k=…"
+            return
+        }
+        do {
+            let estat: EstatConnexio = try await client.call("estat")
+            publicador.link = link.trimmingCharacters(in: .whitespacesAndNewlines)
+            resultat = "Connectat ✓"
+                + (estat.facebook ? " Facebook" + (estat.pagina.map { $0.isEmpty ? "" : " (\($0))" } ?? "") : "")
+                + (estat.instagram ? " · Instagram" + (estat.compteIg.map { $0.isEmpty ? "" : " (@\($0))" } ?? "") : "")
+            await XarxesStore.shared.carregarFragments()
+            try? await Task.sleep(for: .seconds(1))
+            dismiss()
+        } catch {
+            resultat = error.localizedDescription
+        }
+    }
 }
 
-struct PublicadorWebView: UIViewRepresentable {
-    let url: URL
-    let reload: Int
-    @Binding var loading: Bool
-    @Binding var needsLogin: Bool
-
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
-
-    func makeUIView(context: Context) -> WKWebView {
-        let config = WKWebViewConfiguration()
-        config.websiteDataStore = .default()  // perquè recordi el nom de qui publica
-        config.allowsInlineMediaPlayback = true
-        // Google tracta millor la vista web si s'anuncia com a Safari
-        config.applicationNameForUserAgent = "Version/17.0 Mobile/15E148 Safari/604.1"
-        let webView = WKWebView(frame: .zero, configuration: config)
-        webView.navigationDelegate = context.coordinator
-        webView.uiDelegate = context.coordinator
-        webView.isOpaque = false
-        webView.backgroundColor = .black
-        webView.scrollView.backgroundColor = .black
-        context.coordinator.load(url, reload: reload, in: webView)
-        return webView
+/// El botó groc de la web.
+struct XarBoto: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        XarBotoCos(configuration: configuration)
     }
 
-    func updateUIView(_ webView: WKWebView, context: Context) {
-        context.coordinator.parent = self
-        context.coordinator.load(url, reload: reload, in: webView)
+    private struct XarBotoCos: View {
+        let configuration: ButtonStyleConfiguration
+        @Environment(\.isEnabled) private var isEnabled
+
+        var body: some View {
+            configuration.label
+                .font(.system(size: 17, weight: .semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .foregroundStyle(isEnabled ? Xar.onAccent : Xar.text)
+                .background(isEnabled ? Xar.accent : Color(UIColor(hex: 0x7A6A1A)), in: RoundedRectangle(cornerRadius: 12))
+                .opacity(configuration.isPressed ? 0.85 : 1)
+        }
     }
+}
 
-    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
-        var parent: PublicadorWebView
-        private var loadedURL: URL?
-        private var loadedReload = -1
+/// Targeta fosca amb vora, com les .targeta de la web.
+struct XarCard<Content: View>: View {
+    var title: String?
+    @ViewBuilder var content: Content
 
-        init(_ parent: PublicadorWebView) { self.parent = parent }
-
-        /// Torna a carregar l'enllaç sencer (com el botó ↻ Refrescar de la web), no només el marc de dins.
-        func load(_ url: URL, reload: Int, in webView: WKWebView) {
-            guard url != loadedURL || reload != loadedReload else { return }
-            loadedURL = url
-            loadedReload = reload
-            webView.load(URLRequest(url: url))
-        }
-
-        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
-                     decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-            guard let url = navigationAction.request.url else { return decisionHandler(.allow) }
-            if url.host == "accounts.google.com" {
-                parent.loading = false
-                parent.needsLogin = true
-                return decisionHandler(.cancel)
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if let title {
+                Text(title)
+                    .font(.system(size: 16, weight: .semibold))
+                    .padding(.bottom, 10)
             }
-            if let scheme = url.scheme, !["https", "http", "about", "blob", "data"].contains(scheme) {
-                UIApplication.shared.open(url)
-                return decisionHandler(.cancel)
-            }
-            decisionHandler(.allow)
+            content
         }
-
-        /// Els enllaços «Veure a Instagram / Facebook» (target=_blank) s'obren fora, a l'app o a Safari.
-        func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
-                     for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
-            if let url = navigationAction.request.url { UIApplication.shared.open(url) }
-            return nil
-        }
-
-        func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
-            parent.loading = true
-        }
-
-        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            parent.loading = false
-        }
-
-        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-            parent.loading = false
-        }
-
-        func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-            parent.loading = false
-        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Xar.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Xar.line))
+        .padding(.bottom, 14)
     }
 }

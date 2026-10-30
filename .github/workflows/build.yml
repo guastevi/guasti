@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
     paths: ['ios/**', '.github/workflows/**']
+  # Les PR només es compilen per comprovar-les: no es publica res a SideStore
+  pull_request:
+    paths: ['ios/**', '.github/workflows/**']
   workflow_dispatch:
 
 permissions:
@@ -44,6 +47,7 @@ jobs:
           ls -lh Guasti.ipa
 
       - name: Font per a SideStore (actualitzacions automàtiques)
+        if: github.event_name != 'pull_request'
         working-directory: ios
         run: |
           SIZE=$(stat -f%z Guasti.ipa)
@@ -75,11 +79,13 @@ jobs:
           EOF
 
       - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request'
         with:
           name: Guasti
           path: ios/Guasti.ipa
 
       - name: Publica
+        if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
@@ -87,6 +93,7 @@ jobs:
           files: ios/Guasti.ipa
 
       - name: Actualitza la font de SideStore
+        if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: sidestore
