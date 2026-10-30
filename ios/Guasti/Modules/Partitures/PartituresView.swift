@@ -138,10 +138,12 @@ struct PartituresView: View {
                     }
                 } label: {
                     HStack(spacing: 6) {
-                        Image(systemName: "arrow.clockwise").font(.system(size: 14, weight: .semibold))
-                            .rotationEffect(.degrees(spinning || store.isLoading ? 360 : 0))
-                            .animation(spinning || store.isLoading ? .linear(duration: 0.8).repeatForever(autoreverses: false) : .default,
-                                       value: spinning || store.isLoading)
+                        // Una animació repeatForever no s'atura mai a SwiftUI: millor un indicador només mentre carrega
+                        if spinning || store.isLoading {
+                            ProgressView().controlSize(.mini).tint(P.ink).frame(width: 16, height: 16)
+                        } else {
+                            Image(systemName: "arrow.clockwise").font(.system(size: 14, weight: .semibold)).frame(width: 16, height: 16)
+                        }
                         Text("Actualitza").font(.system(size: 13, weight: .medium))
                     }
                     .foregroundStyle(P.ink)
