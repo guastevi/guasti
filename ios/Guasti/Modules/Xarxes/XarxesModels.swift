@@ -126,7 +126,13 @@ struct PublicadorClient {
                 if !envelope.ok { throw APIError(message: envelope.error ?? "Error desconegut") }
                 throw APIError(message: "No entenc la resposta de Google (\(accio)): \(error)")
             }
-            throw APIError(message: "Resposta inesperada de Google. Revisa que el publicador tingui el fitxer ApiGuasti i que la implementació sigui «Qualsevol usuari».")
+            // Ensenyem el principi de la resposta perquè es pugui veure què ha tornat Google
+            let tros = String(decoding: net.prefix(160), as: UTF8.self)
+                .replacingOccurrences(of: "\n", with: " ").trimmingCharacters(in: .whitespaces)
+            if tros.hasPrefix("<") {
+                throw APIError(message: "Google ha tornat una pàgina web en lloc de dades (\(accio)). Revisa que el publicador tingui el fitxer ApiGuasti i que la implementació sigui «Qualsevol usuari».")
+            }
+            throw APIError(message: "Resposta inesperada de Google (\(accio)): \(tros)")
         }
         guard resposta.ok else { throw APIError(message: resposta.error ?? "Error desconegut") }
         guard let r = resposta.r else {
