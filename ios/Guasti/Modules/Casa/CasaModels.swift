@@ -66,6 +66,16 @@ struct CasaDades: Codable {
     let fullUrl: String?
 }
 
+struct CasaImportResposta: Decodable {
+    let avui: String
+    let registres: [CasaRegistre]
+    let fullUrl: String?
+    let nous: Int
+    let pendents: Int
+
+    var dades: CasaDades { CasaDades(avui: avui, registres: registres, fullUrl: fullUrl) }
+}
+
 struct CasaDesaResposta: Decodable {
     let avui: String
     let registres: [CasaRegistre]

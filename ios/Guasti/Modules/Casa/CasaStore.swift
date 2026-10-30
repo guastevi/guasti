@@ -9,6 +9,8 @@ final class CasaStore: ObservableObject {
     @Published private(set) var dades: CasaDades?
     @Published private(set) var isLoading = false
     @Published var errorMessage: String?
+    /// Mentre es porten els documents del correu: quants n'han entrat.
+    @Published private(set) var important: Int?
 
     private let dir: URL = {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -141,6 +143,28 @@ final class CasaStore: ObservableObject {
             errorMessage = Self.explain(error)
         }
     }
+
+    /// Porta les factures i contractes que t'envia la propietària per correu (per tandes, fins que no en queden).
+    /// Torna quants documents nous han entrat.
+    @discardableResult
+    func importaCorreus() async throws -> Int {
+        guard important == nil else { return 0 }
+        important = 0
+        defer { important = nil }
+        var total = 0
+        while true {
+            let r: CasaImportResposta = try await call("casa.importaCorreus", ["limit": 10])
+            set(r.dades)
+            total += r.nous
+            important = total
+            if r.pendents == 0 || r.nous == 0 { break }
+        }
+        UserDefaults.standard.set(true, forKey: "casaCorreusImportats")
+        return total
+    }
+
+    /// El primer cop que s'obre la secció, porta sol tot el que hi ha al correu.
+    var calImportarPrimerCop: Bool { !UserDefaults.standard.bool(forKey: "casaCorreusImportats") }
 
     /// Desa el registre i torna'n l'ID (nou si era nou).
     @discardableResult

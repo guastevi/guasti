@@ -19,6 +19,7 @@ struct CasaView: View {
     @ObservedObject private var store = CasaStore.shared
     @State private var query = ""
     @State private var nou: CasaTipus?
+    @State private var importMsg: String?
 
     private let columns = [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
 
@@ -39,6 +40,16 @@ struct CasaView: View {
                     }
                 }
             } else {
+                if let n = store.important {
+                    Section {
+                        HStack(spacing: 10) {
+                            ProgressView()
+                            Text(n == 0 ? "Buscant factures i contractes al correu..." : "Portant documents del correu: \(n)")
+                        }
+                    }
+                } else if let importMsg {
+                    Section { Text(importMsg).font(Theme.body(14)).foregroundStyle(.secondary) }
+                }
                 pisSection
                 if !store.avisos.isEmpty { avisosSection }
                 Section("Apartats") {
@@ -59,7 +70,10 @@ struct CasaView: View {
         .navigationTitle("Casa")
         .searchable(text: $query, prompt: "Cerca factures, reparacions, documents...")
         .refreshable { await store.load() }
-        .task { await store.load() }
+        .task {
+            await store.load()
+            if store.dades != nil, store.calImportarPrimerCop { importa() }
+        }
         .tint(CasaTheme.green)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
@@ -68,6 +82,11 @@ struct CasaView: View {
                     ForEach(CasaTipus.allCases) { t in
                         Button { nou = t } label: { Label(t.singular, systemImage: t.icon) }
                     }
+                    Divider()
+                    Button { importa() } label: {
+                        Label("Porta les factures del correu", systemImage: "envelope.arrow.triangle.branch")
+                    }
+                    .disabled(store.important != nil)
                     if let url = store.dades?.fullUrl.flatMap({ URL(string: $0) }) {
                         Divider()
                         Link(destination: url) { Label("Obre el full de Google", systemImage: "tablecells") }
@@ -80,6 +99,18 @@ struct CasaView: View {
         }
         .sheet(item: $nou) { t in
             NavigationStack { CasaEditView(registre: .nou(t, avui: store.avui), isNew: true) }
+        }
+    }
+
+    private func importa() {
+        importMsg = nil
+        Task {
+            do {
+                let n = try await store.importaCorreus()
+                importMsg = n == 0 ? "Ja tens tots els documents del correu." : "S'han afegit \(n) documents del correu. A partir d'ara, els nous entren sols cada matí."
+            } catch {
+                importMsg = error.localizedDescription
+            }
         }
     }
 
@@ -241,6 +272,14 @@ struct CasaLlistaView: View {
                 Section {
                     Text(buit).foregroundStyle(.secondary)
                     Button { nou = true } label: { Label("Afegeix-ne", systemImage: "plus") }
+                }
+            } else if tipus == .factura {
+                // Un apartat per subministrament: Llum, Aigua, Gas...
+                let grups = Dictionary(grouping: items, by: \.displayTitle)
+                ForEach(grups.keys.sorted { (grups[$0]?.count ?? 0) > (grups[$1]?.count ?? 0) }, id: \.self) { nom in
+                    Section(nom) {
+                        ForEach(grups[nom] ?? []) { CasaRow(registre: $0, avui: store.avui) }
+                    }
                 }
             } else {
                 Section {
