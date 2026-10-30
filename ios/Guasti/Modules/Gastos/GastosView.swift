@@ -12,6 +12,29 @@ struct GastosModule: GuastiModule {
     @MainActor func makeRootView() -> AnyView {
         AnyView(GastosView())
     }
+
+    @MainActor func prepareSearch() async {
+        await GastosStore.shared.carregaTots()
+    }
+
+    @MainActor func search(_ query: SearchQuery) -> [SearchResult] {
+        GastosStore.shared.tots.filter {
+            query.matches([$0.concepte, $0.categoria, $0.tipus, Fin.nomDia($0.data), Fin.nomMes($0.mes), Fin.eur($0.imp)])
+        }.map { m in
+            let title = m.concepte.isEmpty ? m.categoria : m.concepte
+            return SearchResult(
+                id: "gastos-" + m.id,
+                title: title,
+                subtitle: [m.concepte.isEmpty ? "" : m.categoria, m.tipus, Fin.nomDia(m.data) + " " + String(m.mes.prefix(4))]
+                    .filter { !$0.isEmpty }.joined(separator: " · "),
+                trailing: (m.tipus == "Ingrés" ? "+" : "−") + Fin.eur(m.imp),
+                trailingColor: Fin.color(m.tipus),
+                systemImage: systemImage,
+                rank: query.rank(title: title),
+                destination: { AnyView(GastosView(mes: m.mes, vista: .moviments)) }
+            )
+        }
+    }
 }
 
 /// L'app "Finances" de Gastos: Afegir, Resum i Moviments, com a la web.
@@ -37,8 +60,15 @@ struct GastosView: View {
     }
 
     @ObservedObject private var store = GastosStore.shared
-    @State private var vista: Vista = .afegir
+    @State private var vista: Vista
     @State private var toast: Toast?
+    /// Mes amb què s'obre (des del cercador); nil = el que s'estava mirant.
+    private let mesInicial: String?
+
+    init(mes: String? = nil, vista: Vista = .afegir) {
+        mesInicial = mes
+        _vista = State(initialValue: vista)
+    }
 
     struct Toast: Equatable {
         let text: String
@@ -82,7 +112,7 @@ struct GastosView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Fin.bg, for: .navigationBar)
         .overlay(alignment: .bottom) { toastView }
-        .task { await store.load(store.dades?.mes == store.dades?.mesActual ? nil : store.dades?.mes) }
+        .task { await store.load(mesInicial ?? (store.dades?.mes == store.dades?.mesActual ? nil : store.dades?.mes)) }
         .onChange(of: store.errorMessage) { _, error in
             if let error, store.dades != nil { show(error, error: true) }
         }

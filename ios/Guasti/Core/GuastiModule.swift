@@ -13,6 +13,10 @@ protocol GuastiModule {
     /// Logo (imatge de l'Assets) que substitueix la icona a la pantalla d'inici.
     var logo: String? { get }
     @MainActor func makeRootView() -> AnyView
+    /// Cercador universal: posa al dia les dades que es cercaran (es crida un cop en començar a cercar).
+    @MainActor func prepareSearch() async
+    /// Cercador universal: el que coincideix amb la cerca. Les seccions que no en tenen no cal que ho implementin.
+    @MainActor func search(_ query: SearchQuery) -> [SearchResult]
 }
 
 extension GuastiModule {

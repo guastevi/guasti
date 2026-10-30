@@ -3,6 +3,7 @@ import SwiftUI
 struct HomeView: View {
     @ObservedObject private var connection = Connection.shared
     @State private var showSettings = false
+    @State private var cerca = ""
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 3)
 
@@ -26,41 +27,55 @@ struct HomeView: View {
     }
 
     private var modules: some View {
-            ScrollView {
-                LazyVGrid(columns: columns, spacing: 10) {
-                    ForEach(ModuleRegistry.all, id: \.id) { module in
-                        if module.isAvailable {
-                            NavigationLink {
-                                module.makeRootView()
-                            } label: {
-                                ModuleTile(module: module)
-                            }
-                            .buttonStyle(.plain)
-                        } else {
+        Group {
+            let query = SearchQuery(cerca)
+            if query.isEmpty {
+                grid
+            } else {
+                CercadorResultats(query: query)
+            }
+        }
+        .searchable(text: $cerca, placement: .navigationBarDrawer(displayMode: .always), prompt: "Cerca a tot Guasti")
+        .autocorrectionDisabled()
+        .textInputAutocapitalization(.never)
+        .navigationTitle("Guasti")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showSettings = true
+                } label: {
+                    Image(systemName: "gearshape")
+                }
+                .accessibilityLabel("Configuració")
+            }
+        }
+        .sheet(isPresented: $showSettings) {
+            NavigationStack { SetupView() }
+        }
+        .onAppear {
+            if !connection.isConfigured { showSettings = true }
+        }
+    }
+
+    private var grid: some View {
+        ScrollView {
+            LazyVGrid(columns: columns, spacing: 10) {
+                ForEach(ModuleRegistry.all, id: \.id) { module in
+                    if module.isAvailable {
+                        NavigationLink {
+                            module.makeRootView()
+                        } label: {
                             ModuleTile(module: module)
-                                .opacity(0.45)
                         }
+                        .buttonStyle(.plain)
+                    } else {
+                        ModuleTile(module: module)
+                            .opacity(0.45)
                     }
                 }
-                .padding()
             }
-            .navigationTitle("Guasti")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showSettings = true
-                    } label: {
-                        Image(systemName: "gearshape")
-                    }
-                    .accessibilityLabel("Configuració")
-                }
-            }
-            .sheet(isPresented: $showSettings) {
-                NavigationStack { SetupView() }
-            }
-            .onAppear {
-                if !connection.isConfigured { showSettings = true }
-            }
+            .padding()
+        }
     }
 }
 
