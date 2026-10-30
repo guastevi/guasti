@@ -69,8 +69,19 @@ private struct ModuleTile: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Image(systemName: module.systemImage)
-                .font(.system(size: 30, weight: .semibold))
+            if let logo = module.logo {
+                Image(logo)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: 38)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 4)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .accessibilityHidden(true)
+            } else {
+                Image(systemName: module.systemImage)
+                    .font(.system(size: 30, weight: .semibold))
+            }
             Spacer(minLength: 0)
             Text(module.title)
                 .font(Theme.display(22))

@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "logo-auditori.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

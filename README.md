@@ -44,12 +44,14 @@ Amb un Apple ID gratuït, les apps caduquen als 7 dies i només n'hi pot haver 3
 
 ## Secció Xarxes (publicador de l'Auditori)
 
-És el mateix publicador web d'Instagram i Facebook de l'Auditori (Apps Script «Publicador Auditori»), obert dins de Guasti. No passa per la Guasti API.
+Pantalles natives per publicar alhora a l'Instagram i al Facebook de l'Auditori Josep Carreras: fotos i vídeos (fins a 20), text amb els textos habituals, col·laboradors, Publicació/Reel/Story, ara o programat, i l'historial. Fa servir el mateix Apps Script del publicador («Publicador Auditori»), no la Guasti API, així que tot queda al mateix historial que la web.
 
-- El primer cop, toca **Afegeix l'enllaç** i enganxa l'enllaç de l'app que fa servir l'equip (el que acaba en `?k=…`). Es desa al Keychain de l'iPhone, no al codi.
-- Les fotos i vídeos es trien amb el selector de sempre (Fototeca, Fes una foto, Arxius).
-- Els enllaços «Veure a Instagram / Facebook» s'obren a fora. Al menú ⋯ hi ha **Refresca**, **Obre a Safari** i **Canvia l'enllaç**.
-- La implementació ha d'estar a «Qui hi té accés: Qualsevol usuari». Si demana compte de Google, Google no deixa entrar-hi des d'una vista web i l'app avisa d'obrir-lo a Safari.
+**Un sol cop, al publicador:**
+1. Obre el projecte «Publicador Auditori» a [script.google.com](https://script.google.com).
+2. Botó **+** → **Script**, posa-li de nom `ApiGuasti` i enganxa-hi [`web-apps/publicador/ApiGuasti.gs`](web-apps/publicador/ApiGuasti.gs). No toquis `Codi.gs`.
+3. **Implementa → Gestiona les implementacions** → llapis → Versió: **Versió nova** → Implementa. L'enllaç no canvia.
+
+**A Guasti:** obre Xarxes, toca **Connecta** i enganxa l'enllaç de l'app del publicador (el que acaba en `?k=…`). Es desa al Keychain de l'iPhone, mai al codi.
 
 ## Afegir una secció nova
 

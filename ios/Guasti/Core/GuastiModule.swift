@@ -10,7 +10,13 @@ protocol GuastiModule {
     var systemImage: String { get }
     var tint: Color { get }
     var isAvailable: Bool { get }
+    /// Logo (imatge de l'Assets) que substitueix la icona a la pantalla d'inici.
+    var logo: String? { get }
     @MainActor func makeRootView() -> AnyView
+}
+
+extension GuastiModule {
+    var logo: String? { nil }
 }
 
 enum ModuleRegistry {
