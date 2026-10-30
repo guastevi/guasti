@@ -117,9 +117,14 @@ struct PublicadorClient {
             throw APIError(message: "No hi ha connexió amb Google (\(error.localizedDescription)).")
         }
 
-        guard let resposta = try? JSONDecoder().decode(Resposta<T>.self, from: data) else {
-            if let envelope = try? JSONDecoder().decode(Resposta<Qualsevol>.self, from: data), !envelope.ok {
-                throw APIError(message: envelope.error ?? "Error desconegut")
+        let net = Self.senseMeitatsDEmoji(data)
+        let resposta: Resposta<T>
+        do {
+            resposta = try JSONDecoder().decode(Resposta<T>.self, from: net)
+        } catch {
+            if let envelope = try? JSONDecoder().decode(Resposta<Qualsevol>.self, from: net) {
+                if !envelope.ok { throw APIError(message: envelope.error ?? "Error desconegut") }
+                throw APIError(message: "No entenc la resposta de Google (\(accio)): \(error)")
             }
             throw APIError(message: "Resposta inesperada de Google. Revisa que el publicador tingui el fitxer ApiGuasti i que la implementació sigui «Qualsevol usuari».")
         }
@@ -129,6 +134,18 @@ struct PublicadorClient {
             throw APIError(message: "Google no ha retornat res (\(accio)).")
         }
         return r
+    }
+}
+
+extension PublicadorClient {
+    /// L'historial retalla els textos a 200 caràcters i de vegades parteix un emoji per la meitat.
+    /// El JSON que en surt porta un \uD83C sol, que el navegador accepta però l'iPhone no:
+    /// treiem aquestes meitats soltes abans de llegir la resposta.
+    static func senseMeitatsDEmoji(_ data: Data) -> Data {
+        // String(decoding:) també canvia per � els bytes que no siguin UTF-8 vàlid
+        let text = String(decoding: data, as: UTF8.self)
+        let soltes = #"\\u[dD][89abAB][0-9a-fA-F]{2}(?!\\u[dD][c-fC-F][0-9a-fA-F]{2})|(?<!\\u[dD][89abAB][0-9a-fA-F]{2})\\u[dD][c-fC-F][0-9a-fA-F]{2}"#
+        return Data(text.replacingOccurrences(of: soltes, with: "", options: .regularExpression).utf8)
     }
 }
 
