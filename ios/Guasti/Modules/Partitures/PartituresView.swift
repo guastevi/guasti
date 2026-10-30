@@ -466,7 +466,7 @@ struct PTabContent: View {
                                 PListRow(doc: store.bookCover(e.docs), title: b, sub: "Llibre · \(e.docs.count) fitxers")
                             }.buttonStyle(.plain)
                         } else if let d = e.doc {
-                            NavigationLink { PDetailView(name: "Documents", id: d["ID"] ?? "") } label: {
+                            PDocLink(doc: d) {
                                 PListRow(doc: d, title: d["Títol"] ?? "",
                                          sub: [d["Compositor"], d["Instrument"], d["Tipus"], d["Format"], (d["Formació"] ?? "").isEmpty ? d["Categoria"] : d["Formació"]]
                                              .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
@@ -483,7 +483,7 @@ struct PTabContent: View {
                                 PGridItem(doc: store.bookCover(e.docs), title: b, sub: "Llibre · \(e.docs.count) fitxers")
                             }.buttonStyle(.plain)
                         } else if let d = e.doc {
-                            NavigationLink { PDetailView(name: "Documents", id: d["ID"] ?? "") } label: {
+                            PDocLink(doc: d) {
                                 PGridItem(doc: d, title: d["Títol"] ?? "", sub: (d["Compositor"] ?? "").isEmpty ? (d["Tipus"] ?? "") : (d["Compositor"] ?? ""))
                             }.buttonStyle(.plain)
                         }
@@ -514,7 +514,7 @@ struct PTabContent: View {
             }
             LazyVGrid(columns: pGridColumns, spacing: 12) {
                 ForEach(items, id: \.self) { d in
-                    NavigationLink { PDetailView(name: "Documents", id: d["ID"] ?? "") } label: {
+                    PDocLink(doc: d) {
                         PGridItem(doc: d, title: d["Títol"] ?? "", sub: (d["Compositor"] ?? "").isEmpty ? (d["Formació"] ?? "") : (d["Compositor"] ?? ""))
                     }.buttonStyle(.plain)
                 }

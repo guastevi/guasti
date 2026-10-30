@@ -462,3 +462,33 @@ struct PToastOverlay: ViewModifier {
         content.overlay(alignment: .bottom) { PToastView(text: toastState.text).allowsHitTesting(false) }
     }
 }
+
+/// Enllaç a un document. A l'iPad, un PDF s'obre directament a pantalla sencera (faristol);
+/// mantenint-lo premut hi ha «Fitxa del document». A l'iPhone obre la fitxa com sempre.
+struct PDocLink<Label: View>: View {
+    let doc: Fila
+    @ViewBuilder var label: () -> Label
+    @State private var stand = false
+    @State private var detail = false
+
+    private var direct: Bool { UIDevice.current.userInterfaceIdiom == .pad && Arxiu.isPdf(doc) }
+
+    var body: some View {
+        if direct {
+            Button { stand = true } label: { label() }
+                .buttonStyle(.plain)
+                .contextMenu {
+                    Button { detail = true } label: { SwiftUI.Label("Fitxa del document", systemImage: "info.circle") }
+                    Button { stand = true } label: { SwiftUI.Label("Obre a pantalla sencera", systemImage: "arrow.up.left.and.arrow.down.right") }
+                }
+                .sheet(isPresented: $detail) {
+                    NavigationStack { PDetailView(name: "Documents", id: doc["ID"] ?? "") }.modifier(PToastOverlay())
+                }
+                .fullScreenCover(isPresented: $stand) {
+                    FaristolView(docs: [doc], title: doc["Títol"] ?? "")
+                }
+        } else {
+            NavigationLink { PDetailView(name: "Documents", id: doc["ID"] ?? "") } label: { label() }
+        }
+    }
+}

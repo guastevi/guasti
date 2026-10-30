@@ -159,7 +159,7 @@ struct PDetailView: View {
                 LazyVGrid(columns: pGridColumns, spacing: 12) {
                     ForEach(cds, id: \.self) { d in
                         VStack(spacing: 4) {
-                            NavigationLink { PDetailView(name: "Documents", id: d["ID"] ?? "") } label: {
+                            PDocLink(doc: d) {
                                 PGridItem(doc: d, title: d["Títol"] ?? "", sub: d["Tipus"] ?? "")
                             }.buttonStyle(.plain)
                             PUnlinkButton(docId: d["ID"] ?? "", concertId: id)
@@ -268,7 +268,7 @@ struct PDocList: View {
             VStack(spacing: 6) {
                 ForEach(docs, id: \.self) { d in
                     HStack(spacing: 10) {
-                        NavigationLink { PDetailView(name: "Documents", id: d["ID"] ?? "") } label: {
+                        PDocLink(doc: d) {
                             HStack(spacing: 10) {
                                 PCover(doc: d, label: " ", showFormat: false, placeholderSize: 8).frame(width: 40)
                                 Text((d["Títol"] ?? "").isEmpty ? "Document" : (d["Títol"] ?? "")).fontWeight(.medium)
@@ -396,7 +396,7 @@ struct PComposerView: View {
                     countTitle("Documents", docs.count)
                     LazyVGrid(columns: pGridColumns, spacing: 12) {
                         ForEach(docs, id: \.self) { d in
-                            NavigationLink { PDetailView(name: "Documents", id: d["ID"] ?? "") } label: {
+                            PDocLink(doc: d) {
                                 PGridItem(doc: d, title: d["Títol"] ?? "", sub: d["Tipus"] ?? "")
                             }.buttonStyle(.plain)
                         }
@@ -464,7 +464,7 @@ struct PBookView: View {
                 if viewMode == "list" {
                     VStack(spacing: 0) {
                         ForEach(docs, id: \.self) { d in
-                            NavigationLink { PDetailView(name: "Documents", id: d["ID"] ?? "") } label: {
+                            PDocLink(doc: d) {
                                 PListRow(doc: d, title: short(d), sub: [d["Tipus"] ?? "", d["Format"] ?? ""].filter { !$0.isEmpty }.joined(separator: " · "))
                             }.buttonStyle(.plain)
                         }
@@ -473,7 +473,7 @@ struct PBookView: View {
                 } else {
                     LazyVGrid(columns: pGridColumns, spacing: 12) {
                         ForEach(docs, id: \.self) { d in
-                            NavigationLink { PDetailView(name: "Documents", id: d["ID"] ?? "") } label: {
+                            PDocLink(doc: d) {
                                 PGridItem(doc: d, title: short(d), sub: d["Tipus"] ?? "")
                             }.buttonStyle(.plain)
                         }
