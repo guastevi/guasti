@@ -196,6 +196,7 @@ struct TshirtsReviewView: View {
     @State private var currentID: String?
     @State private var categoria = ""
     @State private var instrument = ""
+    @State private var nom = ""
     @State private var newCategory = false
     @State private var newInstrument = false
     @State private var text = ""
@@ -228,10 +229,14 @@ struct TshirtsReviewView: View {
                             .onTapGesture { fons = fons.next }
 
                         HStack {
-                            Text(d.name).font(Theme.body(17, weight: .semibold, relativeTo: .headline)).lineLimit(1)
+                            Text("Nom").font(Theme.body(13, weight: .bold, relativeTo: .footnote)).foregroundStyle(.secondary)
                             Spacer()
                             Text("En queden \(queue.count)").font(Theme.body(13, relativeTo: .footnote)).foregroundStyle(.secondary)
                         }
+                        TextField(d.name, text: $nom)
+                            .font(Theme.body(17, weight: .semibold, relativeTo: .headline))
+                            .textFieldStyle(.roundedBorder)
+                            .submitLabel(.done)
 
                         Text("Categoria").font(Theme.body(13, weight: .bold, relativeTo: .footnote)).foregroundStyle(.secondary)
                         chips(cats.categories, selected: categoria) { categoria = $0 }
@@ -256,7 +261,19 @@ struct TshirtsReviewView: View {
                             .buttonStyle(.bordered)
                             Button {
                                 let (c, i) = (categoria, instrument)
-                                Task { await cats.save(d, categoria: c, instrument: i) }
+                                let n = nom.trimmingCharacters(in: .whitespacesAndNewlines)
+                                Task {
+                                    var dibuix = d
+                                    if !n.isEmpty, n != d.name {
+                                        do {
+                                            try await store.rename(d, to: n)
+                                            dibuix.name = n
+                                        } catch {
+                                            cats.errorMessage = "No s'ha pogut canviar el nom: \(error.localizedDescription)"
+                                        }
+                                    }
+                                    await cats.save(dibuix, categoria: c, instrument: i)
+                                }
                                 skipped.insert(d.id)
                                 next()
                             } label: {
@@ -302,6 +319,7 @@ struct TshirtsReviewView: View {
         if let d {
             categoria = cats.categoria(d)
             instrument = cats.instrument(d)
+            nom = d.name
         }
     }
 
