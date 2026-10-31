@@ -82,7 +82,7 @@ struct CasaView: View {
             await store.load()
             if store.dades != nil, store.calImportarPrimerCop { importa() }
         }
-        .tint(CasaTheme.green)
+        .tint(.primary)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 if store.isLoading { ProgressView() }
@@ -130,7 +130,7 @@ struct CasaView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text(c.titol.isEmpty ? "El meu pis" : c.titol)
                             .font(Theme.display(20))
-                            .foregroundStyle(CasaTheme.green)
+                            .foregroundStyle(Color.primary)
                         HStack(alignment: .top, spacing: 16) {
                             dada("Renda", store.rendaActual.map { CasaFmt.euros($0) + "/mes" } ?? "—")
                             if !c.venciment.isEmpty {
@@ -302,7 +302,7 @@ struct CasaLlistaView: View {
             }
         }
         .navigationTitle(tipus.short)
-        .tint(CasaTheme.green)
+        .tint(.primary)
         .refreshable { await store.load() }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -363,7 +363,7 @@ struct CasaDetallView: View {
                 ContentUnavailableView("Ja no hi és", systemImage: "trash")
             }
         }
-        .tint(CasaTheme.green)
+        .tint(.primary)
         .quickLookPreview($preview)
     }
 
@@ -374,7 +374,7 @@ struct CasaDetallView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Label(t.singular, systemImage: t.icon)
                         .font(Theme.body(13, weight: .medium, relativeTo: .footnote))
-                        .foregroundStyle(CasaTheme.green)
+                        .foregroundStyle(Color.primary)
                     Text(r.displayTitle).font(Theme.display(24))
                 }
                 .padding(.vertical, 4)
