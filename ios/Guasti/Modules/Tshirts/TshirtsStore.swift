@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
+import ImageIO
 
 /// Un dibuix (un PNG de la carpeta "guastevitshirts" de Drive).
 struct Dibuix: Codable, Identifiable, Hashable {
@@ -242,14 +243,16 @@ actor TshirtLoader {
         let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
         directory = caches.appendingPathComponent("guastevitshirts", isDirectory: true)
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        memory.countLimit = 200
+        memory.totalCostLimit = 120 * 1024 * 1024
     }
 
     func image(id: String, size: Size) async -> UIImage? {
         let key = size.rawValue + "_" + id
         if let image = memory.object(forKey: key as NSString) { return image }
-        if let data = try? Data(contentsOf: fileURL(key)), let image = UIImage(data: data) {
-            memory.setObject(image, forKey: key as NSString)
+        if let data = try? Data(contentsOf: fileURL(key)), let image = Self.decode(data, size: size) {
+            // Miniatures antigues desades a mida completa: es tornen a desar petites.
+            if size == .thumb, data.count > 200_000, let small = image.pngData() { try? small.write(to: fileURL(key)) }
+            remember(image, key: key)
             return image
         }
         if let task = inflight[key] { return await task.value }
@@ -258,6 +261,26 @@ actor TshirtLoader {
         let image = await task.value
         inflight[key] = nil
         return image
+    }
+
+    /// Les miniatures es redueixen sempre (amb 500 dibuixos grans a la graella, si no, la memòria s'acaba
+    /// i l'app es tanca). El dibuix sencer també es limita a una mida que es vegi bé a la pantalla.
+    private static func decode(_ data: Data, size: Size) -> UIImage? {
+        let maxPixels: CGFloat = size == .thumb ? 360 : 2400
+        guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary) else { return nil }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixels,
+        ]
+        guard let cg = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else { return nil }
+        return UIImage(cgImage: cg)
+    }
+
+    private func remember(_ image: UIImage, key: String) {
+        let cost = Int(image.size.width * image.size.height * image.scale * image.scale * 4)
+        memory.setObject(image, forKey: key as NSString, cost: cost)
     }
 
     /// El fitxer PNG original (per compartir-lo o desar-lo).
@@ -274,9 +297,8 @@ actor TshirtLoader {
     }
 
     func prime(_ data: Data, id: String) {
-        for size in [Size.thumb, .full] {
-            try? data.write(to: fileURL(size.rawValue + "_" + id))
-        }
+        try? data.write(to: fileURL("full_" + id))
+        if let small = Self.decode(data, size: .thumb)?.pngData() { try? small.write(to: fileURL("thumb_" + id)) }
     }
 
     private func download(id: String, size: Size, key: String) async -> UIImage? {
@@ -285,9 +307,13 @@ actor TshirtLoader {
         guard let client = await MainActor.run(body: { Connection.shared.client }) else { return nil }
         do {
             let response: ImageData = try await client.call("tshirts.image", ["id": id, "size": size.rawValue])
-            guard let data = Data(base64Encoded: response.base64), let image = UIImage(data: data) else { return nil }
-            try? data.write(to: fileURL(key))
-            memory.setObject(image, forKey: key as NSString)
+            guard let data = Data(base64Encoded: response.base64), let image = Self.decode(data, size: size) else { return nil }
+            if size == .thumb, data.count > 200_000, let small = image.pngData() {
+                try? small.write(to: fileURL(key))
+            } else {
+                try? data.write(to: fileURL(key))
+            }
+            remember(image, key: key)
             return image
         } catch {
             return nil
