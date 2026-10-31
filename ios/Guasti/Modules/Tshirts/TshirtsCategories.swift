@@ -243,8 +243,10 @@ struct TshirtsReviewView: View {
     var body: some View {
         Group {
             if let d = current {
+                ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
+                        Color.clear.frame(height: 0).id("top")
                         fons.view
                             .aspectRatio(1.2, contentMode: .fit)
                             .overlay(DibuixImage(id: d.id, size: .full).padding(12))
@@ -320,8 +322,7 @@ struct TshirtsReviewView: View {
                                     var dibuix = d
                                     if !n.isEmpty, n != d.name {
                                         do {
-                                            try await store.rename(d, to: n)
-                                            dibuix.name = n
+                                            dibuix.name = try await store.rename(d, to: n)
                                         } catch {
                                             cats.errorMessage = "No s'ha pogut canviar el nom: \(error.localizedDescription)"
                                         }
@@ -341,6 +342,11 @@ struct TshirtsReviewView: View {
                         .padding(.top, 6)
                     }
                     .padding(16)
+                }
+                // En passar al dibuix següent, torna a dalt per veure'l sencer.
+                .onChange(of: currentID) { _, _ in
+                    withAnimation { proxy.scrollTo("top", anchor: .top) }
+                }
                 }
             } else {
                 ContentUnavailableView("No queda res per revisar", systemImage: "checkmark.circle",

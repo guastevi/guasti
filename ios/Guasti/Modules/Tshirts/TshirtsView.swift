@@ -204,9 +204,16 @@ struct TshirtsView: View {
         }
     }
 
+    /// A l'inici no es veuen tots els dibuixos: només les carpetes (categories i etiquetes)
+    /// i, a sota, els que encara no s'han revisat.
+    private var inici: Bool {
+        filtre == Self.tots && search.isEmpty && etiquetaFiltre.isEmpty && instrumentFiltre.isEmpty
+    }
+
     private var filtered: [Dibuix] {
         let words = search.lowercased().split(separator: " ").map(String.init)
-        let list = inCategory.filter { d in
+        let base = inici ? store.dibuixos.filter { !cats.revisat($0) } : inCategory
+        let list = base.filter { d in
             if !instrumentFiltre.isEmpty && cats.instrument(d) != instrumentFiltre { return false }
             if !etiquetaFiltre.isEmpty && !cats.etiquetes(d).contains(etiquetaFiltre) { return false }
             guard !words.isEmpty else { return true }
@@ -256,6 +263,16 @@ struct TshirtsView: View {
                     Text(error)
                         .font(Theme.body(13, relativeTo: .footnote))
                         .foregroundStyle(.red)
+                }
+
+                if inici && !store.dibuixos.isEmpty {
+                    carpetes
+                    let n = filtered.count
+                    if n > 0 {
+                        Text(n == 1 ? "1 dibuix per revisar" : "\(n) dibuixos per revisar")
+                            .font(Theme.body(13, weight: .bold, relativeTo: .footnote))
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 LazyVGrid(columns: columns, spacing: mida == .petit ? 6 : 12) {
@@ -331,6 +348,31 @@ struct TshirtsView: View {
 }
 
 extension TshirtsView {
+    /// Les carpetes de l'inici: una per categoria i una per etiqueta, amb el primer dibuix de portada.
+    @ViewBuilder var carpetes: some View {
+        let revisats = store.dibuixos.filter { cats.revisat($0) }
+        let perCat: [(String, [Dibuix])] = cats.categories.compactMap { c in
+            let l = revisats.filter { cats.categoria($0) == c }
+            return l.isEmpty ? nil : (c, l)
+        }
+        let perTag: [(String, [Dibuix])] = cats.allEtiquetes.compactMap { t in
+            let l = store.dibuixos.filter { cats.etiquetes($0).contains(t) }
+            return l.isEmpty ? nil : (t, l)
+        }
+        if !perCat.isEmpty || !perTag.isEmpty {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 10)], spacing: 10) {
+                ForEach(perCat, id: \.0) { c, l in
+                    Button { tria(c) } label: { TshirtCarpeta(nom: c, icona: "folder.fill", dibuixos: l, fons: fons) }
+                        .buttonStyle(.plain)
+                }
+                ForEach(perTag, id: \.0) { t, l in
+                    Button { etiquetaFiltre = t } label: { TshirtCarpeta(nom: t, icona: "tag.fill", dibuixos: l, fons: fons) }
+                        .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
     /// Categories (amb quants n'hi ha), instruments de la categoria triada i la revisió un per un.
     @ViewBuilder var filtres: some View {
         let pendents = store.dibuixos.filter { !cats.revisat($0) }.count
@@ -378,7 +420,7 @@ extension TshirtsView {
             }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
-                    TshirtChip(title: "Tots", count: store.dibuixos.count, selected: filtre == Self.tots) { tria(Self.tots) }
+                    TshirtChip(title: "Inici", selected: filtre == Self.tots && etiquetaFiltre.isEmpty) { tria(Self.tots) }
                     ForEach(cats.categories, id: \.self) { c in
                         let n = store.dibuixos.filter { cats.categoria($0) == c }.count
                         if n > 0 { TshirtChip(title: c, count: n, selected: filtre == c) { tria(c) } }
@@ -419,6 +461,40 @@ extension TshirtsView {
     private func tria(_ f: String) {
         filtre = f
         instrumentFiltre = ""
+        etiquetaFiltre = ""
+    }
+}
+
+/// Una carpeta de l'inici: portada (el primer dibuix), nom i quants n'hi ha.
+private struct TshirtCarpeta: View {
+    let nom: String
+    let icona: String
+    let dibuixos: [Dibuix]
+    let fons: TshirtFons
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            fons.view
+                .aspectRatio(1, contentMode: .fit)
+                .overlay {
+                    if let d = dibuixos.first { DibuixImage(id: d.id, size: .thumb).padding(8) }
+                }
+                .overlay(alignment: .topLeading) {
+                    Image(systemName: icona)
+                        .font(.caption)
+                        .foregroundStyle(Theme.tint)
+                        .padding(6)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Color.primary.opacity(0.08)))
+            HStack(spacing: 4) {
+                Text(nom).lineLimit(1)
+                Spacer(minLength: 0)
+                Text("\(dibuixos.count)").foregroundStyle(.secondary)
+            }
+            .font(Theme.body(13, weight: .semibold, relativeTo: .footnote))
+        }
+        .contentShape(Rectangle())
     }
 }
 
