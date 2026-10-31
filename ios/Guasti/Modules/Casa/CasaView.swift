@@ -284,8 +284,12 @@ struct CasaLlistaView: View {
                     Button { nou = true } label: { Label("Afegeix-ne", systemImage: "plus") }
                 }
             } else if tipus == .factura {
-                // Un apartat per subministrament: Llum, Aigua, Gas...
-                let grups = Dictionary(grouping: items, by: \.displayTitle)
+                // Les factures de l'any triat, per subministrament: Llum, Aigua, Gas...
+                let delAny = items.filter { $0.data.hasPrefix(any) }
+                let grups = Dictionary(grouping: delAny, by: \.displayTitle)
+                if delAny.isEmpty {
+                    Section { Text("No hi ha factures del \(any).").foregroundStyle(.secondary) }
+                }
                 ForEach(grups.keys.sorted { (grups[$0]?.count ?? 0) > (grups[$1]?.count ?? 0) }, id: \.self) { nom in
                     Section(nom) {
                         ForEach(grups[nom] ?? []) { CasaRow(registre: $0, avui: store.avui) }
