@@ -128,7 +128,7 @@ struct CasaEditView: View {
                 }
             }
         }
-        .tint(CasaTheme.green)
+        .tint(.primary)
         .navigationTitle(isNew ? t.singular : "Edita")
         .navigationBarTitleDisplayMode(.inline)
         .interactiveDismissDisabled(saving)
@@ -154,8 +154,8 @@ struct CasaEditView: View {
                         .font(Theme.body(13, relativeTo: .footnote))
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
-                        .background(CasaTheme.green.opacity(0.12), in: Capsule())
-                        .foregroundStyle(CasaTheme.green)
+                        .background(Color.primary.opacity(0.08), in: Capsule())
+                        .foregroundStyle(Color.primary)
                         .buttonStyle(.plain)
                 }
             }
