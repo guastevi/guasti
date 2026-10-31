@@ -25,6 +25,8 @@ final class TshirtsCats: ObservableObject {
     @Published private(set) var custom: [String] = []
     @Published var errorMessage: String?
     private var lastSync: Date?
+    /// Canvis que encara s'estan desant: una resposta antiga de la fulla no els ha de desfer.
+    private var pendents: [String: (fitxa: Fitxa, n: Int)] = [:]
 
     private static let taula = "Dibuixos"
     private static let cols = ["ID", "Nom", "Categoria", "Instrument", "Revisat", "Etiquetes"]
@@ -87,19 +89,34 @@ final class TshirtsCats: ObservableObject {
         await save(d, categoria: categoria(d), instrument: instrument(d), etiquetes: e)
     }
 
+    /// Un dibuix pot tenir més d'un instrument; a la fulla van separats per comes.
+    static func llista(_ text: String) -> [String] {
+        text.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+    }
+
+    func instrumentsDe(_ d: Dibuix) -> [String] { Self.llista(instrument(d)) }
+
     func instruments(in list: [Dibuix]) -> [String] {
         var out: [String] = []
         for d in list {
-            let i = instrument(d)
-            if !i.isEmpty && !out.contains(i) { out.append(i) }
+            for i in instrumentsDe(d) where !out.contains(i) { out.append(i) }
         }
         return out.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
     }
 
     var allInstruments: [String] {
         var out = Self.instrumentsBase
-        for f in fitxes.values where !f.instrument.isEmpty && !out.contains(f.instrument) { out.append(f.instrument) }
+        for f in fitxes.values {
+            for i in Self.llista(f.instrument) where !out.contains(i) { out.append(i) }
+        }
         return out
+    }
+
+    /// Posa o treu un instrument d'un dibuix (sense tocar la resta).
+    func toggleInstrument(_ instrument: String, on d: Dibuix) async {
+        var l = instrumentsDe(d)
+        if let i = l.firstIndex(of: instrument) { l.remove(at: i) } else { l.append(instrument) }
+        await save(d, categoria: categoria(d), instrument: l.joined(separator: ", "))
     }
 
     // MARK: Crides
@@ -127,7 +144,12 @@ final class TshirtsCats: ObservableObject {
     func save(_ d: Dibuix, categoria: String, instrument: String, etiquetes: [String]? = nil) async {
         let before = fitxes[d.id]
         let tags = etiquetes ?? before?.etiquetes ?? []
-        fitxes[d.id] = Fitxa(categoria: categoria, instrument: instrument, revisat: true, etiquetes: tags)
+        let fitxa = Fitxa(categoria: categoria, instrument: instrument, revisat: true, etiquetes: tags)
+        fitxes[d.id] = fitxa
+        pendents[d.id] = (fitxa, (pendents[d.id]?.n ?? 0) + 1)
+        defer {
+            if let p = pendents[d.id] { pendents[d.id] = p.n > 1 ? (p.fitxa, p.n - 1) : nil }
+        }
         saveCache()
         TshirtsFolderSync.shared.scheduleSync()
         guard let client = Connection.shared.client else {
@@ -141,9 +163,10 @@ final class TshirtsCats: ObservableObject {
             apply(r)
             errorMessage = nil
         } catch {
-            fitxes[d.id] = before
+            // Només es torna enrere si no s'hi ha fet cap altre canvi mentrestant.
+            if fitxes[d.id] == fitxa && pendents[d.id]?.n == 1 { fitxes[d.id] = before }
             saveCache()
-            errorMessage = "No s'ha pogut desar: \(error.localizedDescription)"
+            errorMessage = "No s'ha pogut desar «\(d.name)»: \(error.localizedDescription)"
         }
     }
 
@@ -172,6 +195,7 @@ final class TshirtsCats: ObservableObject {
             let tags = (row["Etiquetes"] ?? "").split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
             f[id] = Fitxa(categoria: row["Categoria"] ?? "", instrument: row["Instrument"] ?? "", revisat: rev, etiquetes: tags)
         }
+        for (id, p) in pendents { f[id] = p.fitxa }
         fitxes = f
         custom = (r.taules[Self.taulaCats] ?? []).compactMap { ($0["Nom"] ?? $0["ID"]).flatMap { $0.isEmpty ? nil : $0 } }
         saveCache()
@@ -215,7 +239,7 @@ struct TshirtsReviewView: View {
     @State private var skipped = Set<String>()
     @State private var currentID: String?
     @State private var categoria = ""
-    @State private var instrument = ""
+    @State private var instruments: [String] = []
     @State private var nom = ""
     @State private var etiquetes: [String] = []
     @State private var newEtiqueta = false
@@ -268,9 +292,16 @@ struct TshirtsReviewView: View {
                         Button { text = ""; newCategory = true } label: { Label("Nova categoria", systemImage: "plus") }
                             .font(Theme.body(14, relativeTo: .subheadline))
 
-                        Text("Instrument").font(Theme.body(13, weight: .bold, relativeTo: .footnote)).foregroundStyle(.secondary)
-                        chips(["Cap"] + cats.allInstruments, selected: instrument.isEmpty ? "Cap" : instrument) {
-                            instrument = $0 == "Cap" ? "" : $0
+                        Text("Instruments").font(Theme.body(13, weight: .bold, relativeTo: .footnote)).foregroundStyle(.secondary)
+                        let totsInstr = ["Cap"] + cats.allInstruments + instruments.filter { !cats.allInstruments.contains($0) }
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 6)], alignment: .leading, spacing: 6) {
+                            ForEach(totsInstr, id: \.self) { t in
+                                TshirtChip(title: t, selected: t == "Cap" ? instruments.isEmpty : instruments.contains(t)) {
+                                    if t == "Cap" { instruments = [] }
+                                    else if let i = instruments.firstIndex(of: t) { instruments.remove(at: i) }
+                                    else { instruments.append(t) }
+                                }
+                            }
                         }
                         Button { text = ""; newInstrument = true } label: { Label("Un altre instrument", systemImage: "plus") }
                             .font(Theme.body(14, relativeTo: .subheadline))
@@ -316,7 +347,7 @@ struct TshirtsReviewView: View {
                             }
                             .buttonStyle(.bordered)
                             Button {
-                                let (c, i, tags) = (categoria, instrument, etiquetes)
+                                let (c, i, tags) = (categoria, instruments.joined(separator: ", "), etiquetes)
                                 let n = nom.trimmingCharacters(in: .whitespacesAndNewlines)
                                 Task {
                                     var dibuix = d
@@ -376,7 +407,10 @@ struct TshirtsReviewView: View {
         }
         .alert("Un altre instrument", isPresented: $newInstrument) {
             TextField("Instrument", text: $text)
-            Button("D'acord") { instrument = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+            Button("D'acord") {
+                let t = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased().replacingOccurrences(of: ",", with: " ")
+                if !t.isEmpty && !instruments.contains(t) { instruments.append(t) }
+            }
             Button("Cancel·la", role: .cancel) {}
         }
     }
@@ -386,7 +420,7 @@ struct TshirtsReviewView: View {
         currentID = d?.id
         if let d {
             categoria = cats.categoria(d)
-            instrument = cats.instrument(d)
+            instruments = cats.instrumentsDe(d)
             nom = d.name
             etiquetes = cats.etiquetes(d)
         }
@@ -417,6 +451,17 @@ struct TshirtCategoryMenu: View {
             }
         } label: {
             Label("Mou a una categoria", systemImage: "folder")
+        }
+        Menu {
+            ForEach(cats.allInstruments, id: \.self) { i in
+                Button {
+                    Task { await cats.toggleInstrument(i, on: dibuix) }
+                } label: {
+                    if cats.instrumentsDe(dibuix).contains(i) { Label(i, systemImage: "checkmark") } else { Text(i) }
+                }
+            }
+        } label: {
+            Label("Instruments", systemImage: "music.note")
         }
         if !cats.allEtiquetes.isEmpty {
             Menu {

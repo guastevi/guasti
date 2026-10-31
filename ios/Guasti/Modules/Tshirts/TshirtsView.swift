@@ -214,7 +214,7 @@ struct TshirtsView: View {
         let words = search.lowercased().split(separator: " ").map(String.init)
         let base = inici ? store.dibuixos.filter { !cats.revisat($0) } : inCategory
         let list = base.filter { d in
-            if !instrumentFiltre.isEmpty && cats.instrument(d) != instrumentFiltre { return false }
+            if !instrumentFiltre.isEmpty && !cats.instrumentsDe(d).contains(instrumentFiltre) { return false }
             if !etiquetaFiltre.isEmpty && !cats.etiquetes(d).contains(etiquetaFiltre) { return false }
             guard !words.isEmpty else { return true }
             let text = ([d.name, cats.categoria(d), cats.instrument(d)] + cats.etiquetes(d)).joined(separator: " ").lowercased()
