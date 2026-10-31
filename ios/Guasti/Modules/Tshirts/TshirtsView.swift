@@ -182,6 +182,7 @@ struct TshirtsView: View {
     @State private var search = ""
     @State private var filtre = TshirtsView.tots
     @State private var instrumentFiltre = ""
+    @State private var etiquetaFiltre = ""
     @AppStorage("tshirts.mida") private var mida: Mida = .petit
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var pickingPhotos = false
@@ -207,8 +208,9 @@ struct TshirtsView: View {
         let words = search.lowercased().split(separator: " ").map(String.init)
         let list = inCategory.filter { d in
             if !instrumentFiltre.isEmpty && cats.instrument(d) != instrumentFiltre { return false }
+            if !etiquetaFiltre.isEmpty && !cats.etiquetes(d).contains(etiquetaFiltre) { return false }
             guard !words.isEmpty else { return true }
-            let text = (d.name + " " + cats.categoria(d) + " " + cats.instrument(d)).lowercased()
+            let text = ([d.name, cats.categoria(d), cats.instrument(d)] + cats.etiquetes(d)).joined(separator: " ").lowercased()
             return words.allSatisfy { text.contains($0) }
         }
         switch ordre {
@@ -393,6 +395,20 @@ extension TshirtsView {
                         TshirtChip(title: "Tots els instruments", selected: instrumentFiltre.isEmpty) { instrumentFiltre = "" }
                         ForEach(instruments, id: \.self) { i in
                             TshirtChip(title: i, selected: instrumentFiltre == i) { instrumentFiltre = i }
+                        }
+                    }
+                }
+            }
+            let etiquetes = cats.allEtiquetes
+            if !etiquetes.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "tag").foregroundStyle(.secondary)
+                        ForEach(etiquetes, id: \.self) { t in
+                            let n = inCategory.filter { cats.etiquetes($0).contains(t) }.count
+                            TshirtChip(title: t, count: n, selected: etiquetaFiltre == t) {
+                                etiquetaFiltre = etiquetaFiltre == t ? "" : t
+                            }
                         }
                     }
                 }
