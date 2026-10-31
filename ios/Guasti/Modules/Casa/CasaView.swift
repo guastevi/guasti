@@ -324,7 +324,9 @@ struct CasaLlistaView: View {
     }
 
     @ViewBuilder private func resumFactures(_ items: [CasaRegistre]) -> some View {
-        let anys = Array(Set(items.map { String($0.data.prefix(4)) }.filter { $0.count == 4 } + [any])).sorted(by: >)
+        // Tots els anys seguits, del de la primera factura fins a l'actual
+        let amb = items.compactMap { Int($0.data.prefix(4)) } + [Int(any), Int(CasaFmt.string(Date()).prefix(4))].compactMap { $0 }
+        let anys = (amb.min()!...amb.max()!).reversed().map(String.init)
         let r = store.facturesAny(any)
         Section {
             Picker("Any", selection: $any) {
