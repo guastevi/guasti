@@ -7,7 +7,7 @@ struct CasaModule: GuastiModule {
     let subtitle = "Gestió de casa"
     let systemImage = "house.fill"
     let tint = Color.white
-    let tileText = CasaTheme.green
+    let tileText = Color.black
     let isAvailable = true
 
     @MainActor func makeRootView() -> AnyView {
@@ -192,7 +192,7 @@ struct CasaView: View {
             Spacer(minLength: 0)
             Text(t.short).font(Theme.display(16)).lineLimit(1).minimumScaleFactor(0.7)
         }
-        .foregroundStyle(CasaTheme.green)
+        .foregroundStyle(Color.black)
         .padding(12)
         .frame(maxWidth: .infinity, minHeight: 78, alignment: .leading)
         .background(Color.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
