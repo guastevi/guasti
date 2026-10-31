@@ -15,34 +15,104 @@ struct TshirtsModule: GuastiModule {
     }
 }
 
-/// Les botigues i webs on hi ha els dissenys.
-private let botigues: [(nom: String, icon: String, url: String)] = [
-    ("Webnode", "globe", "https://guastevitshirts.webnode.es/"),
-    ("Bandcamp", "music.note", "https://guastevi.bandcamp.com/"),
-    ("La Tostadora", "tshirt", "https://www.latostadora.com/guastevi/"),
-    ("Redbubble", "bag", "https://www.redbubble.com/people/guastevi/shop"),
-    ("TeePublic", "cart", "https://www.teepublic.com/user/guastevi"),
-    ("Instagram", "camera", "https://www.instagram.com/guastevitshirts/"),
+/// Una botiga meva: la web pública i, per dins com a propietària, les vendes i la gestió.
+private struct Botiga: Identifiable {
+    let nom: String
+    let domini: String
+    let icon: String
+    let visitar: String
+    var vendes: String? = nil
+    var gestio: String? = nil
+    var id: String { nom }
+}
+
+private let botigues: [Botiga] = [
+    Botiga(nom: "Redbubble", domini: "redbubble.com", icon: "bag",
+           visitar: "https://www.redbubble.com/people/guastevi/shop",
+           vendes: "https://www.redbubble.com/account/sales/by_sale",
+           gestio: "https://www.redbubble.com/studio/dashboard"),
+    Botiga(nom: "TeePublic", domini: "teepublic.com", icon: "cart",
+           visitar: "https://www.teepublic.com/user/guastevi",
+           vendes: "https://www.teepublic.com/account",
+           gestio: "https://www.teepublic.com/design/quick_create"),
+    Botiga(nom: "La Tostadora", domini: "latostadora.com", icon: "tshirt",
+           visitar: "https://www.latostadora.com/guastevi/",
+           vendes: "https://www.latostadora.com/login/",
+           gestio: "https://www.latostadora.com/login/"),
+    Botiga(nom: "Amazon Merch", domini: "merch.amazon.com", icon: "shippingbox",
+           visitar: "https://www.amazon.es/s?k=guastevi",
+           vendes: "https://merch.amazon.com/analyze",
+           gestio: "https://merch.amazon.com/manage/products"),
+    Botiga(nom: "Bandcamp", domini: "bandcamp.com", icon: "music.note",
+           visitar: "https://guastevi.bandcamp.com/",
+           vendes: "https://guastevi.bandcamp.com/tools",
+           gestio: "https://bandcamp.com/login"),
+    Botiga(nom: "Webnode", domini: "webnode.com", icon: "globe",
+           visitar: "https://guastevitshirts.webnode.es/",
+           gestio: "https://www.webnode.com/login/"),
+    Botiga(nom: "Instagram", domini: "instagram.com", icon: "camera",
+           visitar: "https://www.instagram.com/guastevitshirts/",
+           gestio: "https://business.facebook.com/latest/home"),
 ]
 
-private struct BotiguesRow: View {
+/// Quadres petits amb el logo de cada botiga. En tocar-ne un: visitar-la o entrar-hi com a propietària.
+private struct BotiguesGrid: View {
+    @Environment(\.openURL) private var openURL
+    private let columns = [GridItem(.adaptive(minimum: 76), spacing: 8)]
+
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(botigues, id: \.nom) { b in
-                    if let url = URL(string: b.url) {
-                        Link(destination: url) {
-                            Label(b.nom, systemImage: b.icon)
-                                .font(Theme.body(14, weight: .semibold, relativeTo: .subheadline))
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(Color(.secondarySystemBackground), in: Capsule())
-                        }
-                        .foregroundStyle(Theme.tint)
-                    }
+        LazyVGrid(columns: columns, spacing: 8) {
+            ForEach(botigues) { b in
+                Menu {
+                    obrir("Visitar la botiga", "eye", b.visitar)
+                    if let v = b.vendes { obrir("Vendes", "chart.bar", v) }
+                    if let g = b.gestio { obrir("Entrar a gestionar", "pencil", g) }
+                } label: {
+                    BotigaTile(botiga: b)
                 }
+                .buttonStyle(.plain)
             }
         }
+    }
+
+    @ViewBuilder private func obrir(_ title: String, _ icon: String, _ url: String) -> some View {
+        if let u = URL(string: url) {
+            Button { openURL(u) } label: { Label(title, systemImage: icon) }
+        }
+    }
+}
+
+private struct BotigaTile: View {
+    let botiga: Botiga
+
+    private var logoURL: URL? {
+        URL(string: "https://www.google.com/s2/favicons?sz=128&domain=\(botiga.domini)")
+    }
+
+    var body: some View {
+        VStack(spacing: 6) {
+            AsyncImage(url: logoURL) { phase in
+                if let image = phase.image {
+                    image.resizable().scaledToFit()
+                } else {
+                    Image(systemName: botiga.icon)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(Theme.tint)
+                }
+            }
+            .frame(width: 30, height: 30)
+            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+
+            Text(botiga.nom)
+                .font(Theme.body(11, weight: .semibold, relativeTo: .caption))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .foregroundStyle(.primary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 4)
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
 
@@ -136,7 +206,7 @@ struct TshirtsView: View {
                         .foregroundStyle(store.errorMessage != nil && store.dibuixos.isEmpty ? .red : .secondary)
                 }
 
-                BotiguesRow()
+                BotiguesGrid()
 
                 if let u = store.uploading {
                     HStack(spacing: 10) {
