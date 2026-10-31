@@ -138,14 +138,16 @@ enum CasaConsumCalcul {
 
     /// Factures que gasten (per dia) molt més que la mitjana de les altres de la mateixa època de l'any.
     static func rares(_ fs: [CasaFacturaConsum]) -> [CasaFacturaRara] {
-        let perDia = fs.filter { $0.dies >= 10 }.map { $0.consum / $0.dies }.sorted()
+        let perDia = fs.filter { $0.dies >= 20 }.map { $0.consum / $0.dies }.sorted()
         guard perDia.count >= 6 else { return [] }
+        // Només les que també són de les més altes de totes (si no, l'estiu del gas, que és gairebé zero, enganya)
+        let alt = perDia[Int(Double(perDia.count) * 0.9)]
         return fs.compactMap { f in
-            guard f.dies >= 10 else { return nil }
+            guard f.dies >= 20, f.consum / f.dies >= alt else { return nil }
             let mes = cal.component(.month, from: f.inici)
             // Mateixa època: factures que comencen com a molt un mes abans o després
             let semblants = fs.filter { g in
-                g.id != f.id && g.dies >= 10 && {
+                g.id != f.id && g.dies >= 20 && {
                     let d = abs(cal.component(.month, from: g.inici) - mes)
                     return min(d, 12 - d) <= 1
                 }()
