@@ -186,6 +186,9 @@ struct TshirtsView: View {
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var pickingPhotos = false
     @State private var pickingFiles = false
+    @State private var confirmRepetits = false
+    @State private var traientRepetits = false
+    @ObservedObject private var folderSync = TshirtsFolderSync.shared
     @AppStorage("tshirts.fons") private var fons: TshirtFons = .clar
     @AppStorage("tshirts.ordre") private var ordre: Ordre = .recents
 
@@ -272,10 +275,12 @@ struct TshirtsView: View {
         .refreshable {
             await store.refresh()
             await cats.refresh()
+            TshirtsFolderSync.shared.scheduleSync()
         }
         .task {
             await store.refreshIfNeeded()
             await cats.refreshIfNeeded()
+            TshirtsFolderSync.shared.scheduleSync()
         }
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
@@ -287,6 +292,9 @@ struct TshirtsView: View {
                         ForEach(Mida.allCases, id: \.self) { Text($0.title).tag($0) }
                     }
                     Button { fons = fons.next } label: { Label("Canvia el fons", systemImage: fons.icon) }
+                    Button { pickingFiles = true } label: {
+                        Label(folderSync.connected ? "Carpeta d'iCloud connectada (canvia-la)" : "Connecta la carpeta d'iCloud", systemImage: "icloud")
+                    }
                 } label: {
                     Image(systemName: "line.3.horizontal.decrease.circle")
                 }
@@ -324,7 +332,33 @@ extension TshirtsView {
     /// Categories (amb quants n'hi ha), instruments de la categoria triada i la revisió un per un.
     @ViewBuilder var filtres: some View {
         let pendents = store.dibuixos.filter { !cats.revisat($0) }.count
+        let repetits = store.repetits.count
         VStack(alignment: .leading, spacing: 8) {
+            if repetits > 0 {
+                Button { confirmRepetits = true } label: {
+                    HStack {
+                        Image(systemName: "square.on.square")
+                        Text(traientRepetits ? "Traient els repetits…" : "Hi ha \(repetits) dibuixos repetits. Treu-los")
+                        Spacer()
+                        if traientRepetits { ProgressView() }
+                    }
+                    .font(Theme.body(15, weight: .semibold, relativeTo: .subheadline))
+                    .padding(12)
+                    .background(Color.orange.opacity(0.18), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .disabled(traientRepetits)
+                .confirmationDialog("S'han pujat dos cops (mateix nom i mateixa mida). Es queda el primer i els altres van a la paperera de Drive (s'hi poden recuperar 30 dies).",
+                                    isPresented: $confirmRepetits, titleVisibility: .visible) {
+                    Button("Treu-ne \(repetits)", role: .destructive) {
+                        traientRepetits = true
+                        Task { await store.treuRepetits(); traientRepetits = false }
+                    }
+                }
+            }
+            if let m = folderSync.lastMessage {
+                Label(m, systemImage: "icloud").font(.footnote).foregroundStyle(.secondary)
+            }
             if pendents > 0 {
                 NavigationLink { TshirtsReviewView() } label: {
                     HStack {
