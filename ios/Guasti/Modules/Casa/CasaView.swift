@@ -21,6 +21,10 @@ struct CasaView: View {
     @State private var query = ""
     @State private var nou: CasaTipus?
     @State private var importMsg: String?
+    /// L'apartat obert. Amb botons i un sol destí: diversos NavigationLink dins d'una mateixa
+    /// fila de List fan que en tornar enrere s'obri un altre cop la pantalla.
+    @State private var obert: CasaTipus?
+    @State private var carregat = false
 
     private let columns = [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
 
@@ -56,7 +60,7 @@ struct CasaView: View {
                 Section("Apartats") {
                     LazyVGrid(columns: columns, spacing: 10) {
                         ForEach(CasaTipus.allCases) { t in
-                            NavigationLink { CasaLlistaView(tipus: t) } label: { tile(t) }
+                            Button { obert = t } label: { tile(t) }
                                 .buttonStyle(.plain)
                         }
                     }
@@ -72,6 +76,9 @@ struct CasaView: View {
         .searchable(text: $query, prompt: "Cerca factures, reparacions, documents...")
         .refreshable { await store.load() }
         .task {
+            // Només en entrar a la secció, no cada cop que es torna d'un apartat
+            guard !carregat else { return }
+            carregat = true
             await store.load()
             if store.dades != nil, store.calImportarPrimerCop { importa() }
         }
@@ -101,6 +108,7 @@ struct CasaView: View {
         .sheet(item: $nou) { t in
             NavigationStack { CasaEditView(registre: .nou(t, avui: store.avui), isNew: true) }
         }
+        .navigationDestination(item: $obert) { t in CasaLlistaView(tipus: t) }
     }
 
     private func importa() {
@@ -184,12 +192,13 @@ struct CasaView: View {
             Spacer(minLength: 0)
             Text(t.short).font(Theme.display(16)).lineLimit(1).minimumScaleFactor(0.7)
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(CasaTheme.green)
         .padding(12)
         .frame(maxWidth: .infinity, minHeight: 78, alignment: .leading)
-        .background(
-            LinearGradient(colors: [CasaTheme.green, CasaTheme.green.opacity(0.72)], startPoint: .topLeading, endPoint: .bottomTrailing),
-            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.15))
         )
         .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
