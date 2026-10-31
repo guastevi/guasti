@@ -110,6 +110,7 @@ final class TshirtsCats: ObservableObject {
         let before = fitxes[d.id]
         fitxes[d.id] = Fitxa(categoria: categoria, instrument: instrument, revisat: true)
         saveCache()
+        TshirtsFolderSync.shared.scheduleSync()
         guard let client = Connection.shared.client else {
             errorMessage = "Falta configurar la connexió amb Google."
             return

@@ -77,7 +77,7 @@ final class TshirtsStore: ObservableObject {
         uploading = (0, items.count)
         defer { uploading = nil }
         for item in items {
-            if !(await uploadOne(item.data, name: item.name)) { break }
+            if await uploadOne(item.data, name: item.name) == nil { break }
             if let u = uploading { uploading = (u.done + 1, u.total) }
         }
     }
@@ -92,7 +92,12 @@ final class TshirtsStore: ObservableObject {
         for url in urls {
             if url.startAccessingSecurityScopedResource() { scoped.append(url) }
             if (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true {
-                let items = (try? FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)) ?? []
+                // La carpeta es recorda per mantenir-la ordenada igual que l'app (subcarpetes per categoria).
+                TshirtsFolderSync.shared.remember(url)
+                var items: [URL] = []
+                if let e = FileManager.default.enumerator(at: url, includingPropertiesForKeys: nil, options: [.skipsPackageDescendants]) {
+                    for case let u as URL in e { items.append(u) }
+                }
                 files += items
                     .map { $0.pathExtension == "icloud" ? Self.iCloudOriginal($0) : $0 }
                     .filter { UTType(filenameExtension: $0.pathExtension)?.conforms(to: .image) == true }
@@ -103,7 +108,8 @@ final class TshirtsStore: ObservableObject {
         }
         let existing = Set(dibuixos.map { $0.name.lowercased() })
         files = files.filter { !existing.contains($0.deletingPathExtension().lastPathComponent.lowercased()) }
-        guard !files.isEmpty else { return }
+        guard !files.isEmpty else { TshirtsFolderSync.shared.scheduleSync(); return }
+        defer { TshirtsFolderSync.shared.scheduleSync() }
 
         uploading = (0, files.count)
         // Que la pantalla no s'apagui mentre puja una carpeta llarga.
@@ -117,8 +123,8 @@ final class TshirtsStore: ObservableObject {
                 if let u = uploading { uploading = (u.done + 1, u.total) }
                 continue
             }
-            let ok = await uploadOne(data, name: file.deletingPathExtension().lastPathComponent)
-            if !ok { break }
+            guard let id = await uploadOne(data, name: file.deletingPathExtension().lastPathComponent) else { break }
+            if !id.isEmpty { TshirtsFolderSync.shared.track(id: id, file: file) }
             if let u = uploading { uploading = (u.done + 1, u.total) }
         }
     }
@@ -141,12 +147,13 @@ final class TshirtsStore: ObservableObject {
         return url.deletingLastPathComponent().appendingPathComponent(name)
     }
 
-    private func uploadOne(_ data: Data, name: String?) async -> Bool {
+    /// Retorna l'id a Drive ("" si el fitxer no era una imatge), o nil si ha fallat i cal parar.
+    private func uploadOne(_ data: Data, name: String?) async -> String? {
         guard let client = Connection.shared.client else {
             errorMessage = "Falta configurar la connexió amb Google."
-            return false
+            return nil
         }
-        guard let png = Self.png(data) else { return true }
+        guard let png = Self.png(data) else { return "" }
         do {
             var params: [String: Any] = ["base64": png.base64EncodedString()]
             if let name, !name.isEmpty { params["name"] = name }
@@ -155,10 +162,10 @@ final class TshirtsStore: ObservableObject {
             await TshirtLoader.shared.prime(png, id: response.dibuix.id)
             errorMessage = nil
             save()
-            return true
+            return response.dibuix.id
         } catch {
             errorMessage = Self.friendly(error)
-            return false
+            return nil
         }
     }
 
@@ -166,6 +173,22 @@ final class TshirtsStore: ObservableObject {
         let response: OneResponse = try await requireClient().call("tshirts.rename", ["id": dibuix.id, "name": name])
         if let i = dibuixos.firstIndex(where: { $0.id == dibuix.id }) { dibuixos[i] = response.dibuix }
         save()
+        TshirtsFolderSync.shared.scheduleSync()
+    }
+
+    /// Dibuixos pujats dos cops (mateix nom i mida): es queda el més antic i la resta són repetits.
+    var repetits: [Dibuix] {
+        var groups: [String: [Dibuix]] = [:]
+        for d in dibuixos {
+            groups[d.name.precomposedStringWithCanonicalMapping.lowercased() + "|" + String(d.size ?? -1), default: []].append(d)
+        }
+        return groups.values.filter { $0.count > 1 }.flatMap { $0.sorted { $0.created < $1.created }.dropFirst() }
+    }
+
+    func treuRepetits() async {
+        for d in repetits {
+            do { try await delete(d) } catch { errorMessage = Self.friendly(error); return }
+        }
     }
 
     func delete(_ dibuix: Dibuix) async throws {
