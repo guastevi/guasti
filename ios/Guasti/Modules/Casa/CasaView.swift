@@ -121,7 +121,11 @@ struct CasaView: View {
         Task {
             do {
                 let n = try await store.importaCorreus()
-                importMsg = n == 0 ? "Ja tens tots els documents del correu." : "S'han afegit \(n) documents del correu. A partir d'ara, els nous entren sols cada matí."
+                if store.correusDeFons {
+                    importMsg = "Les factures que falten s'estan portant soles, una mica cada minut. Estira cap avall d'aquí a una estona per veure-les."
+                } else {
+                    importMsg = n == 0 ? "Ja tens tots els documents del correu." : "S'han afegit \(n) documents del correu. A partir d'ara, els nous entren sols cada matí."
+                }
             } catch {
                 importMsg = error.localizedDescription
             }

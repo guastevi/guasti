@@ -79,6 +79,8 @@ struct CasaImportResposta: Decodable {
     let fullUrl: String?
     let nous: Int
     let pendents: Int
+    /// Ja s'estan portant de fons (cada minut), així que l'app no hi ha d'insistir.
+    var deFons: Bool? = nil
 
     var dades: CasaDades { CasaDades(avui: avui, registres: registres, fullUrl: fullUrl) }
 }

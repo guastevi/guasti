@@ -72,7 +72,7 @@ function handle_(p) {
     'casa.pujaFitxer': () => withLock_(() => casaPujaFitxer_(p.id, p.nom, p.mime, p.base64)),
     'casa.treuFitxer': () => withLock_(() => casaTreuFitxer_(p.id, p.fitxerId)),
     'casa.fitxer': () => casaFitxer_(p.fitxerId),
-    'casa.importaCorreus': () => withLock_(() => casaImportaCorreus_(p.limit)),
+    'casa.importaCorreus': () => casaImportaDesDeLApp_(p.limit),
     // Partitures: les mateixes funcions de l'app web "Arxiu de Repertori" (p.fn + p.args)
     'partitures': () => ({ r: partitures_(p.fn, p.args || []) }),
     // guastevitshirts: els dibuixos en PNG, a la carpeta de Drive "guastevitshirts"
@@ -964,27 +964,35 @@ function casaImportaCorreus_(limit, segons) {
   let pendents = 0;
   const max = Number(limit) || 10;
   threads.reverse(); // els més antics primer
-  for (const th of threads) {
-    for (const msg of th.getMessages()) {
+  // Els correus ja portats se salten sense obrir-ne els adjunts (és el que fa anar lent)
+  const correusFets = new Set(Array.from(fets).map(c => String(c).split('#')[0]));
+  const missatges = [];
+  for (let i = 0; i < threads.length; i += 50) {
+    GmailApp.getMessagesForThreads(threads.slice(i, i + 50)).forEach(ms => missatges.push.apply(missatges, ms));
+  }
+  for (const msg of missatges) {
+    {
+      if (correusFets.has(msg.getId())) continue;
       if (msg.getFrom().toLowerCase().indexOf(CASA_CORREU) < 0) continue;
+      // Cada correu sencer o res: així cap adjunt no queda a mitges
+      if (nous >= max || Date.now() - inici > temps) { pendents++; continue; }
       const adjunts = msg.getAttachments({ includeInlineImages: false, includeAttachments: true })
         .filter(b => !/^image\/(png|gif)$/.test(b.getContentType()) || b.getSize() > 30000);
       adjunts.forEach((blob, i) => {
         const clau = msg.getId() + '#' + i;
         if (fets.has(clau)) return;
-        if (nous >= max || Date.now() - inici > temps) { pendents++; return; }
         const c = casaClassifica_(blob.getName(), msg.getSubject(), msg.getPlainBody().slice(0, 400));
         const data = Utilities.formatDate(msg.getDate(), G_TZ, 'yyyy-MM-dd');
         const file = casaSubcarpeta_(c.carpeta).createFile(blob.copyBlob().setName(data + ' ' + blob.getName()));
         const text = c.tipus === 'factura' ? casaTextDe_(blob) : '';
         const imp = text ? casaImportDeText_(text) : '';
         const consum = c.tipus === 'factura' ? casaCampsConsum_(text, c.titol) : {};
-        appendRow_(sh, readTable_(sh), Object.assign({
+        casaLockCurt_(() => appendRow_(sh, readTable_(sh), Object.assign({
           'ID': newId_(), 'Tipus': c.tipus, 'Data': data, 'Títol': c.titol, 'Import': imp, 'Qui': c.qui,
           'Estat': '', 'Venciment': '', 'Cada': '', 'Notes': 'Del correu: ' + msg.getSubject(),
           'Fitxers': JSON.stringify([{ id: file.getId(), nom: file.getName(), mime: file.getMimeType() }]),
           'Creat': Utilities.formatDate(new Date(), G_TZ, 'yyyy-MM-dd HH:mm'), 'Correu': clau,
-        }, consum));
+        }, consum)));
         fets.add(clau);
         nous++;
       });
@@ -1015,12 +1023,50 @@ function casaProgramaAutomatic_() {
   if (!ja) ScriptApp.newTrigger('casaImportaCorreusAuto').timeBased().everyDays(1).atHour(7).create();
 }
 
+/**
+ * Feina de fons: tandes curtes (uns 70 s) i el bloqueig només en el moment d'escriure al full,
+ * perquè l'app i les altres seccions no s'hagin d'esperar mentre es llegeixen PDFs.
+ */
 function casaImportaCorreusAuto() {
-  withLock_(() => {
-    const r = casaImportaCorreus_(60, 200);
-    const falten = casaCompletaConsums_(120);
+  const props = PropertiesService.getScriptProperties();
+  const ara = Date.now();
+  if (ara - Number(props.getProperty('CASA_TREBALLANT') || 0) < 5 * 60 * 1000) return; // ja n'hi ha una en marxa
+  props.setProperty('CASA_TREBALLANT', String(ara));
+  try {
+    const r = casaImportaCorreus_(40, 45);
+    const falten = casaCompletaConsums_(25);
     if (r.pendents > 0 || falten > 0) casaProgramaContinuacio_();
-  });
+  } finally {
+    props.deleteProperty('CASA_TREBALLANT');
+  }
+}
+
+/** Des de l'app: si ja s'estan portant de fons, no s'hi posa (tornaria a fer esperar Google). */
+function casaImportaDesDeLApp_(limit) {
+  const props = PropertiesService.getScriptProperties();
+  if (Date.now() - Number(props.getProperty('CASA_TREBALLANT') || 0) < 5 * 60 * 1000) {
+    const out = casaDades_();
+    out.nous = 0;
+    out.pendents = Math.max(1, Number(props.getProperty('CASA_PENDENTS') || 0));
+    out.deFons = true;
+    return out;
+  }
+  props.setProperty('CASA_TREBALLANT', String(Date.now()));
+  try {
+    return casaImportaCorreus_(limit, 40);
+  } finally {
+    props.deleteProperty('CASA_TREBALLANT');
+  }
+}
+
+function casaLockCurt_(fn) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    return fn();
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 /** Mentre quedin correus o factures per llegir, torna a treballar d'aquí a un minut. */
@@ -1068,7 +1114,9 @@ function casaCompletaConsums_(segons) {
     if (pdf) { try { text = casaTextDe_(DriveApp.getFileById(pdf.id).getBlob()); } catch (err) {} }
     const camps = casaCampsConsum_(text, String(f.values[s.t.col['Títol']]));
     if (!String(f.values[s.t.col.Import] || '') && text) camps['Import'] = casaImportDeText_(text);
-    writeRow_(sh, s.t, f.row, camps);
+    const id = String(f.values[s.t.col.ID]);
+    // Per ID i dins del bloqueig: mentrestant s'hi poden haver afegit o esborrat files
+    casaLockCurt_(() => { try { const x = casaFila_(sh, id); writeRow_(sh, x.t, x.row, camps); } catch (err) {} });
     fetes++;
   }
   return s.files.length - fetes;
