@@ -322,8 +322,7 @@ struct TshirtsReviewView: View {
                                     var dibuix = d
                                     if !n.isEmpty, n != d.name {
                                         do {
-                                            try await store.rename(d, to: n)
-                                            dibuix.name = n
+                                            dibuix.name = try await store.rename(d, to: n)
                                         } catch {
                                             cats.errorMessage = "No s'ha pogut canviar el nom: \(error.localizedDescription)"
                                         }

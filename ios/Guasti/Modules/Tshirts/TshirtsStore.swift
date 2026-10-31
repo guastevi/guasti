@@ -170,11 +170,25 @@ final class TshirtsStore: ObservableObject {
         }
     }
 
-    func rename(_ dibuix: Dibuix, to name: String) async throws {
+    /// Canvia el nom. Si ja hi ha un altre dibuix amb aquest nom, hi afegeix (1), (2)...
+    /// Retorna el nom que s'ha posat finalment.
+    @discardableResult
+    func rename(_ dibuix: Dibuix, to wanted: String) async throws -> String {
+        let name = uniqueName(wanted, except: dibuix.id)
         let response: OneResponse = try await requireClient().call("tshirts.rename", ["id": dibuix.id, "name": name])
         if let i = dibuixos.firstIndex(where: { $0.id == dibuix.id }) { dibuixos[i] = response.dibuix }
         save()
         TshirtsFolderSync.shared.scheduleSync()
+        return name
+    }
+
+    private func uniqueName(_ wanted: String, except id: String) -> String {
+        let key = { (s: String) in s.precomposedStringWithCanonicalMapping.lowercased() }
+        let taken = Set(dibuixos.filter { $0.id != id }.map { key($0.name) })
+        guard taken.contains(key(wanted)) else { return wanted }
+        var n = 1
+        while taken.contains(key("\(wanted) (\(n))")) { n += 1 }
+        return "\(wanted) (\(n))"
     }
 
     /// Dibuixos pujats dos cops (mateix nom i mida): es queda el més antic i la resta són repetits.
