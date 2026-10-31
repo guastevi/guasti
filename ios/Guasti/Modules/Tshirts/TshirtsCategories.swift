@@ -219,6 +219,7 @@ struct TshirtsReviewView: View {
     @State private var nom = ""
     @State private var etiquetes: [String] = []
     @State private var newEtiqueta = false
+    @State private var confirmDelete = false
     @State private var newCategory = false
     @State private var newInstrument = false
     @State private var text = ""
@@ -288,6 +289,23 @@ struct TshirtsReviewView: View {
 
                         if let e = cats.errorMessage {
                             Text(e).font(Theme.body(13, relativeTo: .footnote)).foregroundStyle(.red)
+                        }
+
+                        Button(role: .destructive) { confirmDelete = true } label: {
+                            Label("Elimina aquest dibuix", systemImage: "trash")
+                        }
+                        .font(Theme.body(14, relativeTo: .subheadline))
+                        .confirmationDialog("S'eliminarà «\(d.name)». Anirà a la paperera de Drive i s'hi pot recuperar durant 30 dies.",
+                                            isPresented: $confirmDelete, titleVisibility: .visible) {
+                            Button("Elimina", role: .destructive) {
+                                skipped.insert(d.id)
+                                next()
+                                Task {
+                                    do { try await store.delete(d) } catch {
+                                        cats.errorMessage = "No s'ha pogut eliminar: \(error.localizedDescription)"
+                                    }
+                                }
+                            }
                         }
 
                         HStack(spacing: 12) {
