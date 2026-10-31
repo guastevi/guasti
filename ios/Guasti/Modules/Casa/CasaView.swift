@@ -57,6 +57,11 @@ struct CasaView: View {
                 }
                 pisSection
                 if !store.avisos.isEmpty { avisosSection }
+                Section {
+                    NavigationLink { CasaConsumView() } label: {
+                        Label("Consum de llum, aigua i gas", systemImage: "chart.bar.xaxis")
+                    }
+                }
                 Section("Apartats") {
                     LazyVGrid(columns: columns, spacing: 10) {
                         ForEach(CasaTipus.allCases) { t in
@@ -269,7 +274,14 @@ struct CasaLlistaView: View {
     var body: some View {
         let items = store.registres(tipus)
         List {
-            if tipus == .factura, !items.isEmpty { resumFactures(items) }
+            if tipus == .factura, !items.isEmpty {
+                resumFactures(items)
+                Section {
+                    NavigationLink { CasaConsumView() } label: {
+                        Label("Consum any a any", systemImage: "chart.bar.xaxis")
+                    }
+                }
+            }
             if tipus == .renda, let r = store.rendaActual {
                 Section {
                     LabeledContent("Renda d'ara", value: CasaFmt.euros(r) + "/mes")

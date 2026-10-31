@@ -65,7 +65,7 @@ function handle_(p) {
     'gastos.desaFila': () => withLock_(() => gastosDesaFila_(p.taula, p.cols, p.fila, p.taules)),
     'gastos.esborraFila': () => withLock_(() => gastosEsborraFila_(p.taula, p.id, p.taules)),
     'armari.reorder': () => withLock_(() => armariReorder_(p.pieceId, p.ids)),
-    'casa.dades': () => casaDades_(),
+    'casa.dades': () => { casaRevisaPendents_(); return casaDades_(); },
     'casa.desa': () => withLock_(() => casaDesa_(p.registre)),
     'casa.esborra': () => withLock_(() => casaEsborra_(p.id)),
     'casa.fet': () => withLock_(() => casaFet_(p.id)),
@@ -669,7 +669,8 @@ function trashPhoto_(path) {
 // pestanya Registre) i els documents en una carpeta de Drive. Tots dos es creen sols el
 // primer cop; els seus ID queden a les propietats de l'script.
 
-const CASA_COLS = ['ID', 'Tipus', 'Data', 'Títol', 'Import', 'Qui', 'Estat', 'Venciment', 'Cada', 'Notes', 'Fitxers', 'Creat', 'Correu'];
+const CASA_COLS = ['ID', 'Tipus', 'Data', 'Títol', 'Import', 'Qui', 'Estat', 'Venciment', 'Cada', 'Notes', 'Fitxers', 'Creat', 'Correu',
+  'Consum', 'Unitat', 'Inici'];
 const CASA_TIPUS = ['contracte', 'renda', 'factura', 'reparacio', 'manteniment', 'compra', 'document'];
 
 function casaFolder_() {
@@ -718,6 +719,7 @@ function casaRegistres_(sh) {
       id: r.ID, tipus: r.Tipus, data: casaData_(r.Data), titol: r['Títol'], import: r.Import,
       qui: r.Qui, estat: r.Estat, venciment: casaData_(r.Venciment), cada: r.Cada, notes: r.Notes,
       fitxers: fitxers, creat: r.Creat,
+      consum: r.Consum || '', unitat: r.Unitat || '', inici: casaData_(r.Inici),
     };
   });
 }
@@ -852,36 +854,103 @@ function casaSubcarpeta_(nom) {
   return it.hasNext() ? it.next() : root.createFolder(nom);
 }
 
-/** Intenta llegir el total d'una factura en PDF (amb l'OCR de Drive). Si no ho troba, buit. */
-function casaImportDe_(blob) {
+/** El text d'un PDF (amb l'OCR de Drive), en una sola línia. Buit si no es pot llegir. */
+function casaTextDe_(blob) {
   if (blob.getContentType() !== 'application/pdf') return '';
   let docId = '';
   try {
     const doc = Drive.Files.create({ name: 'tmp-casa-ocr', mimeType: 'application/vnd.google-apps.document' }, blob, { ocrLanguage: 'es' });
     docId = doc.id;
-    const text = DocumentApp.openById(docId).getBody().getText().replace(/\s+/g, ' ');
-    const pats = [
-      /total\s*(?:a\s*pagar|factura|importe|import)?[^0-9€]{0,40}(\d{1,4}(?:\.\d{3})*,\d{2})\s*€/i,
-      /importe\s*total[^0-9€]{0,40}(\d{1,4}(?:\.\d{3})*,\d{2})/i,
-      /(\d{1,4}(?:\.\d{3})*,\d{2})\s*€/,
-    ];
-    for (const re of pats) {
-      const m = re.exec(text);
-      if (m) return m[1].replace(/\./g, '').replace(',', '.');
-    }
+    return DocumentApp.openById(docId).getBody().getText().replace(/\s+/g, ' ');
   } catch (err) {
+    return '';
   } finally {
     if (docId) { try { Drive.Files.remove(docId); } catch (err) {} }
   }
+}
+
+/** "1.395,20" -> 1395.2 */
+function casaNum_(s) {
+  return Number(String(s).replace(/\./g, '').replace(',', '.'));
+}
+
+/** El total d'una factura a partir del seu text. Si no ho troba, buit. */
+function casaImportDeText_(text) {
+  const pats = [
+    /total\s*(?:a\s*pagar|factura|importe|import)?[^0-9€]{0,40}(\d{1,4}(?:\.\d{3})*,\d{2})\s*€/i,
+    /importe\s*total[^0-9€]{0,40}(\d{1,4}(?:\.\d{3})*,\d{2})/i,
+    /(\d{1,4}(?:\.\d{3})*,\d{2})\s*€/,
+  ];
+  for (const re of pats) {
+    const m = re.exec(text);
+    if (m) return m[1].replace(/\./g, '').replace(',', '.');
+  }
   return '';
+}
+
+/**
+ * Consum i període d'una factura de llum (kWh), gas (kWh) o aigua (m³) a partir del seu text.
+ * Torna { consum, unitat, inici, fi } o null si no és una factura de consum o no s'entén.
+ */
+function casaConsumDeText_(text, titol) {
+  if (!text) return null;
+  const t = String(text).replace(/\s+/g, ' ');
+  const num = '(\\d{1,3}(?:\\.\\d{3})*(?:,\\d+)?|\\d+(?:,\\d+)?)';
+  let consum = null;
+  let unitat = '';
+  const primer = res => {
+    for (const re of res) { const m = re.exec(t); if (m) return casaNum_(m[1]); }
+    return null;
+  };
+  if (titol === 'Llum') {
+    unitat = 'kWh';
+    consum = primer([
+      new RegExp('consumo total(?: de electricidad| facturado)?:?\\s*' + num + '\\s*kWh', 'i'),
+      new RegExp('consum total(?: d\'electricitat| facturat)?:?\\s*' + num + '\\s*kWh', 'i'),
+      new RegExp('(?:energ[ií]a|electricidad) consumida:?\\s*' + num + '\\s*kWh', 'i'),
+    ]);
+  } else if (titol === 'Gas') {
+    unitat = 'kWh';
+    // "Consum kWh: 11 m³ x 11,455 kWh* 126 kWh": el bo és el tercer número
+    const m = new RegExp('consumo? kWh:?\\s*' + num + '\\s*m³?\\s*x\\s*' + num + '\\s*kWh\\*?\\s*' + num + '\\s*kWh', 'i').exec(t);
+    consum = m ? casaNum_(m[3]) : primer([
+      new RegExp('consumo? (?:total )?(?:de )?gas:?\\s*' + num + '\\s*kWh', 'i'),
+      new RegExp('impost especial sobre hidrocarburs\\s*' + num + '\\s*kWh', 'i'),
+      new RegExp('impuesto especial sobre hidrocarburos\\s*' + num + '\\s*kWh', 'i'),
+    ]);
+  } else if (titol === 'Aigua') {
+    unitat = 'm³';
+    consum = primer([
+      new RegExp('consum total\\s*' + num + '\\s*m(?:³|3)', 'i'),
+      new RegExp('consum per[ií]ode \\(m(?:³|3)\\)[^0-9]{0,80}?' + num, 'i'),
+    ]);
+  } else {
+    return null;
+  }
+  if (consum === null || !isFinite(consum)) return null;
+  const p = /(?:del?|per[ií]odo?)\s*(\d{2})[\/.](\d{2})[\/.](\d{4})\s*(?:a|al|-)\s*(\d{2})[\/.](\d{2})[\/.](\d{4})/i.exec(t);
+  return {
+    consum: consum,
+    unitat: unitat,
+    inici: p ? p[3] + '-' + p[2] + '-' + p[1] : '',
+    fi: p ? p[6] + '-' + p[5] + '-' + p[4] : '',
+  };
+}
+
+/** Columnes de consum d'una factura ja llegida (per afegir a la fila). */
+function casaCampsConsum_(text, titol) {
+  const c = casaConsumDeText_(text, titol);
+  if (!c) return { 'Consum': '-' }; // "-": ja s'ha mirat i no n'hi ha
+  return { 'Consum': String(c.consum), 'Unitat': c.unitat, 'Inici': c.inici, 'Venciment': c.fi };
 }
 
 /**
  * Porta a Casa els adjunts dels correus de la propietària que encara no hi són.
  * Va per tandes (Apps Script té un límit de temps): torna quants en queden.
  */
-function casaImportaCorreus_(limit) {
+function casaImportaCorreus_(limit, segons) {
   const inici = Date.now();
+  const temps = (Number(segons) || 60) * 1000;
   const sh = casaSheet_();
   casaAssegura_(sh);
   const fets = new Set(readObjects_(sh).map(r => r.Correu).filter(Boolean));
@@ -903,23 +972,27 @@ function casaImportaCorreus_(limit) {
       adjunts.forEach((blob, i) => {
         const clau = msg.getId() + '#' + i;
         if (fets.has(clau)) return;
-        if (nous >= max || Date.now() - inici > 60000) { pendents++; return; }
+        if (nous >= max || Date.now() - inici > temps) { pendents++; return; }
         const c = casaClassifica_(blob.getName(), msg.getSubject(), msg.getPlainBody().slice(0, 400));
         const data = Utilities.formatDate(msg.getDate(), G_TZ, 'yyyy-MM-dd');
         const file = casaSubcarpeta_(c.carpeta).createFile(blob.copyBlob().setName(data + ' ' + blob.getName()));
-        const imp = c.tipus === 'factura' ? casaImportDe_(blob) : '';
-        appendRow_(sh, readTable_(sh), {
+        const text = c.tipus === 'factura' ? casaTextDe_(blob) : '';
+        const imp = text ? casaImportDeText_(text) : '';
+        const consum = c.tipus === 'factura' ? casaCampsConsum_(text, c.titol) : {};
+        appendRow_(sh, readTable_(sh), Object.assign({
           'ID': newId_(), 'Tipus': c.tipus, 'Data': data, 'Títol': c.titol, 'Import': imp, 'Qui': c.qui,
           'Estat': '', 'Venciment': '', 'Cada': '', 'Notes': 'Del correu: ' + msg.getSubject(),
           'Fitxers': JSON.stringify([{ id: file.getId(), nom: file.getName(), mime: file.getMimeType() }]),
           'Creat': Utilities.formatDate(new Date(), G_TZ, 'yyyy-MM-dd HH:mm'), 'Correu': clau,
-        });
+        }, consum));
         fets.add(clau);
         nous++;
       });
     }
   }
   casaProgramaAutomatic_();
+  PropertiesService.getScriptProperties().setProperty('CASA_PENDENTS', String(pendents));
+  if (pendents > 0) casaProgramaContinuacio_();
   const out = casaDades_();
   out.nous = nous;
   out.pendents = pendents;
@@ -943,7 +1016,70 @@ function casaProgramaAutomatic_() {
 }
 
 function casaImportaCorreusAuto() {
-  withLock_(() => casaImportaCorreus_(40));
+  withLock_(() => {
+    const r = casaImportaCorreus_(60, 200);
+    const falten = casaCompletaConsums_(120);
+    if (r.pendents > 0 || falten > 0) casaProgramaContinuacio_();
+  });
+}
+
+/** Mentre quedin correus o factures per llegir, torna a treballar d'aquí a un minut. */
+function casaProgramaContinuacio_() {
+  const ja = ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'casaContinua');
+  if (!ja) ScriptApp.newTrigger('casaContinua').timeBased().after(60 * 1000).create();
+}
+
+function casaContinua() {
+  ScriptApp.getProjectTriggers()
+    .filter(t => t.getHandlerFunction() === 'casaContinua')
+    .forEach(t => ScriptApp.deleteTrigger(t));
+  casaImportaCorreusAuto();
+}
+
+/** Factures de llum, aigua i gas que encara no tenen el consum llegit. */
+function casaSenseConsum_(sh) {
+  const t = readTable_(sh);
+  const out = [];
+  t.rows.forEach((r, i) => {
+    if (String(r[t.col.Tipus]) !== 'factura') return;
+    if (['Llum', 'Aigua', 'Gas'].indexOf(String(r[t.col['Títol']])) < 0) return;
+    if (String(r[t.col.Consum] || '') !== '') return;
+    out.push({ row: i + 2, values: r });
+  });
+  return { t: t, files: out };
+}
+
+/**
+ * Llegeix el consum (kWh o m³) i el període de les factures que ja eren a Casa abans
+ * que existissin aquestes columnes. Torna quantes en queden per llegir.
+ */
+function casaCompletaConsums_(segons) {
+  const inici = Date.now();
+  const sh = casaSheet_();
+  casaAssegura_(sh);
+  const s = casaSenseConsum_(sh);
+  let fetes = 0;
+  for (const f of s.files) {
+    if (Date.now() - inici > (Number(segons) || 60) * 1000) break;
+    let fitxers = [];
+    try { fitxers = JSON.parse(f.values[s.t.col.Fitxers] || '[]'); } catch (err) {}
+    const pdf = fitxers.find(x => x.mime === 'application/pdf');
+    let text = '';
+    if (pdf) { try { text = casaTextDe_(DriveApp.getFileById(pdf.id).getBlob()); } catch (err) {} }
+    const camps = casaCampsConsum_(text, String(f.values[s.t.col['Títol']]));
+    if (!String(f.values[s.t.col.Import] || '') && text) camps['Import'] = casaImportDeText_(text);
+    writeRow_(sh, s.t, f.row, camps);
+    fetes++;
+  }
+  return s.files.length - fetes;
+}
+
+/** Quan s'obre la secció: si encara hi ha feina pendent, que continuï sola. */
+function casaRevisaPendents_() {
+  try {
+    const p = PropertiesService.getScriptProperties().getProperty('CASA_PENDENTS');
+    if (p === null || Number(p) > 0 || casaSenseConsum_(casaSheet_()).files.length > 0) casaProgramaContinuacio_();
+  } catch (err) {}
 }
 
 function casaFitxer_(fitxerId) {

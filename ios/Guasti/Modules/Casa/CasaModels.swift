@@ -25,9 +25,15 @@ struct CasaRegistre: Codable, Hashable, Identifiable {
     var notes: String
     var fitxers: [CasaFitxer]
     var creat: String
+    /// Factures de llum, aigua i gas: el consum que diu el PDF ("-" si no se n'ha trobat),
+    /// la unitat (kWh o m³) i l'inici del període (el final és `venciment`).
+    var consum: String? = nil
+    var unitat: String? = nil
+    var inici: String? = nil
 
     enum CodingKeys: String, CodingKey {
         case id, tipus, data, titol, imp = "import", qui, estat, venciment, cada, notes, fitxers, creat
+        case consum, unitat, inici
     }
 
     static func nou(_ tipus: CasaTipus, avui: String) -> CasaRegistre {
@@ -43,6 +49,7 @@ struct CasaRegistre: Codable, Hashable, Identifiable {
 
     var kind: CasaTipus { CasaTipus(rawValue: tipus) ?? .document }
     var importValue: Double? { Double(imp.replacingOccurrences(of: ",", with: ".")) }
+    var consumValue: Double? { consum.flatMap { Double($0.replacingOccurrences(of: ",", with: ".")) } }
     var dataDate: Date? { CasaFmt.date(data) }
     var vencimentDate: Date? { CasaFmt.date(venciment) }
 
