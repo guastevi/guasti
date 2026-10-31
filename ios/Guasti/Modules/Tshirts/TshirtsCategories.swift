@@ -17,6 +17,8 @@ final class TshirtsCats: ObservableObject {
         var categoria: String
         var instrument: String
         var revisat: Bool
+        /// Etiquetes lliures (Sant Jordi, Nadal...), separades per comes a la fulla.
+        var etiquetes: [String]?
     }
 
     @Published private(set) var fitxes: [String: Fitxa] = [:]
@@ -25,7 +27,7 @@ final class TshirtsCats: ObservableObject {
     private var lastSync: Date?
 
     private static let taula = "Dibuixos"
-    private static let cols = ["ID", "Nom", "Categoria", "Instrument", "Revisat"]
+    private static let cols = ["ID", "Nom", "Categoria", "Instrument", "Revisat", "Etiquetes"]
     private static let taulaCats = "Dibuixos categories"
     private static let colsCats = ["ID", "Nom"]
     private static var defs: [String: [String]] { [taula: cols, taulaCats: colsCats] }
@@ -69,6 +71,22 @@ final class TshirtsCats: ObservableObject {
 
     func revisat(_ d: Dibuix) -> Bool { fitxes[d.id]?.revisat == true }
 
+    func etiquetes(_ d: Dibuix) -> [String] { fitxes[d.id]?.etiquetes ?? [] }
+
+    /// Totes les etiquetes que s'han fet servir, en ordre alfabètic.
+    var allEtiquetes: [String] {
+        var out = Set<String>()
+        for f in fitxes.values { (f.etiquetes ?? []).forEach { out.insert($0) } }
+        return out.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+    }
+
+    /// Posa o treu una etiqueta d'un dibuix (sense tocar la categoria).
+    func toggle(_ etiqueta: String, on d: Dibuix) async {
+        var e = etiquetes(d)
+        if let i = e.firstIndex(of: etiqueta) { e.remove(at: i) } else { e.append(etiqueta) }
+        await save(d, categoria: categoria(d), instrument: instrument(d), etiquetes: e)
+    }
+
     func instruments(in list: [Dibuix]) -> [String] {
         var out: [String] = []
         for d in list {
@@ -106,16 +124,17 @@ final class TshirtsCats: ObservableObject {
 
     /// Desa la categoria i l'instrument d'un dibuix i el marca com a revisat.
     /// Es veu de seguida; si la fulla no respon, es torna enrere i surt l'error.
-    func save(_ d: Dibuix, categoria: String, instrument: String) async {
+    func save(_ d: Dibuix, categoria: String, instrument: String, etiquetes: [String]? = nil) async {
         let before = fitxes[d.id]
-        fitxes[d.id] = Fitxa(categoria: categoria, instrument: instrument, revisat: true)
+        let tags = etiquetes ?? before?.etiquetes ?? []
+        fitxes[d.id] = Fitxa(categoria: categoria, instrument: instrument, revisat: true, etiquetes: tags)
         saveCache()
         TshirtsFolderSync.shared.scheduleSync()
         guard let client = Connection.shared.client else {
             errorMessage = "Falta configurar la connexió amb Google."
             return
         }
-        let fila: [String: Any] = ["ID": d.id, "Nom": d.name, "Categoria": categoria, "Instrument": instrument, "Revisat": "Sí"]
+        let fila: [String: Any] = ["ID": d.id, "Nom": d.name, "Categoria": categoria, "Instrument": instrument, "Revisat": "Sí", "Etiquetes": tags.joined(separator: ", ")]
         do {
             let r: Resposta = try await client.call("gastos.desaFila",
                                                     ["taula": Self.taula, "cols": Self.cols, "fila": fila, "taules": Self.defs])
@@ -150,7 +169,8 @@ final class TshirtsCats: ObservableObject {
         for row in r.taules[Self.taula] ?? [] {
             guard let id = row["ID"], !id.isEmpty else { continue }
             let rev = ["sí", "si", "true", "1", "x"].contains((row["Revisat"] ?? "").lowercased())
-            f[id] = Fitxa(categoria: row["Categoria"] ?? "", instrument: row["Instrument"] ?? "", revisat: rev)
+            let tags = (row["Etiquetes"] ?? "").split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+            f[id] = Fitxa(categoria: row["Categoria"] ?? "", instrument: row["Instrument"] ?? "", revisat: rev, etiquetes: tags)
         }
         fitxes = f
         custom = (r.taules[Self.taulaCats] ?? []).compactMap { ($0["Nom"] ?? $0["ID"]).flatMap { $0.isEmpty ? nil : $0 } }
@@ -196,6 +216,9 @@ struct TshirtsReviewView: View {
     @State private var currentID: String?
     @State private var categoria = ""
     @State private var instrument = ""
+    @State private var nom = ""
+    @State private var etiquetes: [String] = []
+    @State private var newEtiqueta = false
     @State private var newCategory = false
     @State private var newInstrument = false
     @State private var text = ""
@@ -228,10 +251,14 @@ struct TshirtsReviewView: View {
                             .onTapGesture { fons = fons.next }
 
                         HStack {
-                            Text(d.name).font(Theme.body(17, weight: .semibold, relativeTo: .headline)).lineLimit(1)
+                            Text("Nom").font(Theme.body(13, weight: .bold, relativeTo: .footnote)).foregroundStyle(.secondary)
                             Spacer()
                             Text("En queden \(queue.count)").font(Theme.body(13, relativeTo: .footnote)).foregroundStyle(.secondary)
                         }
+                        TextField(d.name, text: $nom)
+                            .font(Theme.body(17, weight: .semibold, relativeTo: .headline))
+                            .textFieldStyle(.roundedBorder)
+                            .submitLabel(.done)
 
                         Text("Categoria").font(Theme.body(13, weight: .bold, relativeTo: .footnote)).foregroundStyle(.secondary)
                         chips(cats.categories, selected: categoria) { categoria = $0 }
@@ -245,6 +272,20 @@ struct TshirtsReviewView: View {
                         Button { text = ""; newInstrument = true } label: { Label("Un altre instrument", systemImage: "plus") }
                             .font(Theme.body(14, relativeTo: .subheadline))
 
+                        Text("Etiquetes").font(Theme.body(13, weight: .bold, relativeTo: .footnote)).foregroundStyle(.secondary)
+                        let totes = cats.allEtiquetes + etiquetes.filter { !cats.allEtiquetes.contains($0) }
+                        if !totes.isEmpty {
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 6)], alignment: .leading, spacing: 6) {
+                                ForEach(totes, id: \.self) { t in
+                                    TshirtChip(title: t, selected: etiquetes.contains(t)) {
+                                        if let i = etiquetes.firstIndex(of: t) { etiquetes.remove(at: i) } else { etiquetes.append(t) }
+                                    }
+                                }
+                            }
+                        }
+                        Button { text = ""; newEtiqueta = true } label: { Label("Nova etiqueta", systemImage: "tag") }
+                            .font(Theme.body(14, relativeTo: .subheadline))
+
                         if let e = cats.errorMessage {
                             Text(e).font(Theme.body(13, relativeTo: .footnote)).foregroundStyle(.red)
                         }
@@ -255,8 +296,20 @@ struct TshirtsReviewView: View {
                             }
                             .buttonStyle(.bordered)
                             Button {
-                                let (c, i) = (categoria, instrument)
-                                Task { await cats.save(d, categoria: c, instrument: i) }
+                                let (c, i, tags) = (categoria, instrument, etiquetes)
+                                let n = nom.trimmingCharacters(in: .whitespacesAndNewlines)
+                                Task {
+                                    var dibuix = d
+                                    if !n.isEmpty, n != d.name {
+                                        do {
+                                            try await store.rename(d, to: n)
+                                            dibuix.name = n
+                                        } catch {
+                                            cats.errorMessage = "No s'ha pogut canviar el nom: \(error.localizedDescription)"
+                                        }
+                                    }
+                                    await cats.save(dibuix, categoria: c, instrument: i, etiquetes: tags)
+                                }
                                 skipped.insert(d.id)
                                 next()
                             } label: {
@@ -289,6 +342,14 @@ struct TshirtsReviewView: View {
             }
             Button("Cancel·la", role: .cancel) {}
         }
+        .alert("Nova etiqueta", isPresented: $newEtiqueta) {
+            TextField("Per exemple: Sant Jordi", text: $text)
+            Button("Afegeix") {
+                let t = text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: " ")
+                if !t.isEmpty && !etiquetes.contains(t) { etiquetes.append(t) }
+            }
+            Button("Cancel·la", role: .cancel) {}
+        }
         .alert("Un altre instrument", isPresented: $newInstrument) {
             TextField("Instrument", text: $text)
             Button("D'acord") { instrument = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
@@ -302,6 +363,8 @@ struct TshirtsReviewView: View {
         if let d {
             categoria = cats.categoria(d)
             instrument = cats.instrument(d)
+            nom = d.name
+            etiquetes = cats.etiquetes(d)
         }
     }
 
@@ -330,6 +393,19 @@ struct TshirtCategoryMenu: View {
             }
         } label: {
             Label("Mou a una categoria", systemImage: "folder")
+        }
+        if !cats.allEtiquetes.isEmpty {
+            Menu {
+                ForEach(cats.allEtiquetes, id: \.self) { t in
+                    Button {
+                        Task { await cats.toggle(t, on: dibuix) }
+                    } label: {
+                        if cats.etiquetes(dibuix).contains(t) { Label(t, systemImage: "checkmark") } else { Text(t) }
+                    }
+                }
+            } label: {
+                Label("Etiquetes", systemImage: "tag")
+            }
         }
     }
 }
