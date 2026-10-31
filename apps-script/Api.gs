@@ -830,6 +830,8 @@ function casaTreuFitxer_(id, fitxerId) {
 // ---- correus de la propietària: factures i contractes que arriben per Gmail
 
 const CASA_CORREU = 'immasp30@gmail.com';
+// Fins al 2020 la propietària escrivia des d'aquesta altra adreça
+const CASA_CORREUS = [CASA_CORREU, 'immasp@semm.org'];
 
 /** Apartat (i carpeta de Drive) on va cada document, segons el nom del fitxer, l'assumpte i el text. */
 function casaClassifica_(nom, assumpte, text) {
@@ -956,7 +958,7 @@ function casaImportaCorreus_(limit, segons) {
   const fets = new Set(readObjects_(sh).map(r => r.Correu).filter(Boolean));
   const threads = [];
   for (let start = 0; ; start += 100) {
-    const page = GmailApp.search('from:' + CASA_CORREU + ' has:attachment', start, 100);
+    const page = GmailApp.search('from:(' + CASA_CORREUS.join(' OR ') + ') has:attachment', start, 100);
     threads.push.apply(threads, page);
     if (page.length < 100) break;
   }
@@ -973,7 +975,8 @@ function casaImportaCorreus_(limit, segons) {
   for (const msg of missatges) {
     {
       if (correusFets.has(msg.getId())) continue;
-      if (msg.getFrom().toLowerCase().indexOf(CASA_CORREU) < 0) continue;
+      const de = msg.getFrom().toLowerCase();
+      if (!CASA_CORREUS.some(a => de.indexOf(a) >= 0)) continue;
       // Cada correu sencer o res: així cap adjunt no queda a mitges
       if (nous >= max || Date.now() - inici > temps) { pendents++; continue; }
       const adjunts = msg.getAttachments({ includeInlineImages: false, includeAttachments: true })
@@ -981,10 +984,18 @@ function casaImportaCorreus_(limit, segons) {
       adjunts.forEach((blob, i) => {
         const clau = msg.getId() + '#' + i;
         if (fets.has(clau)) return;
-        const c = casaClassifica_(blob.getName(), msg.getSubject(), msg.getPlainBody().slice(0, 400));
+        let c = casaClassifica_(blob.getName(), msg.getSubject(), msg.getPlainBody().slice(0, 400));
+        let text = '';
+        // Els correus antics porten noms com "ViewDoc.pdf": si no se sap què és, es mira el PDF
+        if (c.tipus === 'document' && blob.getContentType() === 'application/pdf') {
+          text = casaTextDe_(blob);
+          const pel = casaClassifica_('', '', text.slice(0, 3000));
+          if (pel.tipus !== 'document') c = pel;
+        }
         const data = Utilities.formatDate(msg.getDate(), G_TZ, 'yyyy-MM-dd');
         const file = casaSubcarpeta_(c.carpeta).createFile(blob.copyBlob().setName(data + ' ' + blob.getName()));
-        const text = c.tipus === 'factura' ? casaTextDe_(blob) : '';
+        if (c.tipus !== 'factura') text = '';
+        else if (!text) text = casaTextDe_(blob);
         const imp = text ? casaImportDeText_(text) : '';
         const consum = c.tipus === 'factura' ? casaCampsConsum_(text, c.titol) : {};
         casaLockCurt_(() => appendRow_(sh, readTable_(sh), Object.assign({

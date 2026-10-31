@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
+import ImageIO
 
 /// Un dibuix (un PNG de la carpeta "guastevitshirts" de Drive).
 struct Dibuix: Codable, Identifiable, Hashable {
@@ -77,7 +78,7 @@ final class TshirtsStore: ObservableObject {
         uploading = (0, items.count)
         defer { uploading = nil }
         for item in items {
-            if !(await uploadOne(item.data, name: item.name)) { break }
+            if await uploadOne(item.data, name: item.name) == nil { break }
             if let u = uploading { uploading = (u.done + 1, u.total) }
         }
     }
@@ -92,7 +93,12 @@ final class TshirtsStore: ObservableObject {
         for url in urls {
             if url.startAccessingSecurityScopedResource() { scoped.append(url) }
             if (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true {
-                let items = (try? FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)) ?? []
+                // La carpeta es recorda per mantenir-la ordenada igual que l'app (subcarpetes per categoria).
+                TshirtsFolderSync.shared.remember(url)
+                var items: [URL] = []
+                if let e = FileManager.default.enumerator(at: url, includingPropertiesForKeys: nil, options: [.skipsPackageDescendants]) {
+                    for case let u as URL in e { items.append(u) }
+                }
                 files += items
                     .map { $0.pathExtension == "icloud" ? Self.iCloudOriginal($0) : $0 }
                     .filter { UTType(filenameExtension: $0.pathExtension)?.conforms(to: .image) == true }
@@ -103,7 +109,8 @@ final class TshirtsStore: ObservableObject {
         }
         let existing = Set(dibuixos.map { $0.name.lowercased() })
         files = files.filter { !existing.contains($0.deletingPathExtension().lastPathComponent.lowercased()) }
-        guard !files.isEmpty else { return }
+        guard !files.isEmpty else { TshirtsFolderSync.shared.scheduleSync(); return }
+        defer { TshirtsFolderSync.shared.scheduleSync() }
 
         uploading = (0, files.count)
         // Que la pantalla no s'apagui mentre puja una carpeta llarga.
@@ -117,8 +124,8 @@ final class TshirtsStore: ObservableObject {
                 if let u = uploading { uploading = (u.done + 1, u.total) }
                 continue
             }
-            let ok = await uploadOne(data, name: file.deletingPathExtension().lastPathComponent)
-            if !ok { break }
+            guard let id = await uploadOne(data, name: file.deletingPathExtension().lastPathComponent) else { break }
+            if !id.isEmpty { TshirtsFolderSync.shared.track(id: id, file: file) }
             if let u = uploading { uploading = (u.done + 1, u.total) }
         }
     }
@@ -141,12 +148,13 @@ final class TshirtsStore: ObservableObject {
         return url.deletingLastPathComponent().appendingPathComponent(name)
     }
 
-    private func uploadOne(_ data: Data, name: String?) async -> Bool {
+    /// Retorna l'id a Drive ("" si el fitxer no era una imatge), o nil si ha fallat i cal parar.
+    private func uploadOne(_ data: Data, name: String?) async -> String? {
         guard let client = Connection.shared.client else {
             errorMessage = "Falta configurar la connexió amb Google."
-            return false
+            return nil
         }
-        guard let png = Self.png(data) else { return true }
+        guard let png = Self.png(data) else { return "" }
         do {
             var params: [String: Any] = ["base64": png.base64EncodedString()]
             if let name, !name.isEmpty { params["name"] = name }
@@ -155,17 +163,47 @@ final class TshirtsStore: ObservableObject {
             await TshirtLoader.shared.prime(png, id: response.dibuix.id)
             errorMessage = nil
             save()
-            return true
+            return response.dibuix.id
         } catch {
             errorMessage = Self.friendly(error)
-            return false
+            return nil
         }
     }
 
-    func rename(_ dibuix: Dibuix, to name: String) async throws {
+    /// Canvia el nom. Si ja hi ha un altre dibuix amb aquest nom, hi afegeix (1), (2)...
+    /// Retorna el nom que s'ha posat finalment.
+    @discardableResult
+    func rename(_ dibuix: Dibuix, to wanted: String) async throws -> String {
+        let name = uniqueName(wanted, except: dibuix.id)
         let response: OneResponse = try await requireClient().call("tshirts.rename", ["id": dibuix.id, "name": name])
         if let i = dibuixos.firstIndex(where: { $0.id == dibuix.id }) { dibuixos[i] = response.dibuix }
         save()
+        TshirtsFolderSync.shared.scheduleSync()
+        return name
+    }
+
+    private func uniqueName(_ wanted: String, except id: String) -> String {
+        let key = { (s: String) in s.precomposedStringWithCanonicalMapping.lowercased() }
+        let taken = Set(dibuixos.filter { $0.id != id }.map { key($0.name) })
+        guard taken.contains(key(wanted)) else { return wanted }
+        var n = 1
+        while taken.contains(key("\(wanted) (\(n))")) { n += 1 }
+        return "\(wanted) (\(n))"
+    }
+
+    /// Dibuixos pujats dos cops (mateix nom i mida): es queda el més antic i la resta són repetits.
+    var repetits: [Dibuix] {
+        var groups: [String: [Dibuix]] = [:]
+        for d in dibuixos {
+            groups[d.name.precomposedStringWithCanonicalMapping.lowercased() + "|" + String(d.size ?? -1), default: []].append(d)
+        }
+        return groups.values.filter { $0.count > 1 }.flatMap { $0.sorted { $0.created < $1.created }.dropFirst() }
+    }
+
+    func treuRepetits() async {
+        for d in repetits {
+            do { try await delete(d) } catch { errorMessage = Self.friendly(error); return }
+        }
     }
 
     func delete(_ dibuix: Dibuix) async throws {
@@ -219,14 +257,16 @@ actor TshirtLoader {
         let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
         directory = caches.appendingPathComponent("guastevitshirts", isDirectory: true)
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        memory.countLimit = 200
+        memory.totalCostLimit = 120 * 1024 * 1024
     }
 
     func image(id: String, size: Size) async -> UIImage? {
         let key = size.rawValue + "_" + id
         if let image = memory.object(forKey: key as NSString) { return image }
-        if let data = try? Data(contentsOf: fileURL(key)), let image = UIImage(data: data) {
-            memory.setObject(image, forKey: key as NSString)
+        if let data = try? Data(contentsOf: fileURL(key)), let image = Self.decode(data, size: size) {
+            // Miniatures antigues desades a mida completa: es tornen a desar petites.
+            if size == .thumb, data.count > 200_000, let small = image.pngData() { try? small.write(to: fileURL(key)) }
+            remember(image, key: key)
             return image
         }
         if let task = inflight[key] { return await task.value }
@@ -235,6 +275,26 @@ actor TshirtLoader {
         let image = await task.value
         inflight[key] = nil
         return image
+    }
+
+    /// Les miniatures es redueixen sempre (amb 500 dibuixos grans a la graella, si no, la memòria s'acaba
+    /// i l'app es tanca). El dibuix sencer també es limita a una mida que es vegi bé a la pantalla.
+    private static func decode(_ data: Data, size: Size) -> UIImage? {
+        let maxPixels: CGFloat = size == .thumb ? 360 : 2400
+        guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary) else { return nil }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixels,
+        ]
+        guard let cg = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else { return nil }
+        return UIImage(cgImage: cg)
+    }
+
+    private func remember(_ image: UIImage, key: String) {
+        let cost = Int(image.size.width * image.size.height * image.scale * image.scale * 4)
+        memory.setObject(image, forKey: key as NSString, cost: cost)
     }
 
     /// El fitxer PNG original (per compartir-lo o desar-lo).
@@ -251,9 +311,8 @@ actor TshirtLoader {
     }
 
     func prime(_ data: Data, id: String) {
-        for size in [Size.thumb, .full] {
-            try? data.write(to: fileURL(size.rawValue + "_" + id))
-        }
+        try? data.write(to: fileURL("full_" + id))
+        if let small = Self.decode(data, size: .thumb)?.pngData() { try? small.write(to: fileURL("thumb_" + id)) }
     }
 
     private func download(id: String, size: Size, key: String) async -> UIImage? {
@@ -262,9 +321,13 @@ actor TshirtLoader {
         guard let client = await MainActor.run(body: { Connection.shared.client }) else { return nil }
         do {
             let response: ImageData = try await client.call("tshirts.image", ["id": id, "size": size.rawValue])
-            guard let data = Data(base64Encoded: response.base64), let image = UIImage(data: data) else { return nil }
-            try? data.write(to: fileURL(key))
-            memory.setObject(image, forKey: key as NSString)
+            guard let data = Data(base64Encoded: response.base64), let image = Self.decode(data, size: size) else { return nil }
+            if size == .thumb, data.count > 200_000, let small = image.pngData() {
+                try? small.write(to: fileURL(key))
+            } else {
+                try? data.write(to: fileURL(key))
+            }
+            remember(image, key: key)
             return image
         } catch {
             return nil

@@ -7,7 +7,7 @@ struct TshirtsModule: GuastiModule {
     let title = "guastevitshirts"
     let subtitle = "Els meus dibuixos"
     let systemImage = "paintbrush.pointed.fill"
-    let tint = Color(UIColor(hex: 0xC9962B)) // groc ocre
+    let tint = Color(UIColor(hex: 0xF7C600)) // groc viu
     let isAvailable = true
 
     @MainActor func makeRootView() -> AnyView {
@@ -15,34 +15,108 @@ struct TshirtsModule: GuastiModule {
     }
 }
 
-/// Les botigues i webs on hi ha els dissenys.
-private let botigues: [(nom: String, icon: String, url: String)] = [
-    ("Webnode", "globe", "https://guastevitshirts.webnode.es/"),
-    ("Bandcamp", "music.note", "https://guastevi.bandcamp.com/"),
-    ("La Tostadora", "tshirt", "https://www.latostadora.com/guastevi/"),
-    ("Redbubble", "bag", "https://www.redbubble.com/people/guastevi/shop"),
-    ("TeePublic", "cart", "https://www.teepublic.com/user/guastevi"),
-    ("Instagram", "camera", "https://www.instagram.com/guastevitshirts/"),
+/// Una botiga meva: la web pública i, per dins com a propietària, les vendes i la gestió.
+private struct Botiga: Identifiable {
+    let nom: String
+    let domini: String
+    let icon: String
+    let visitar: String
+    var vendes: String? = nil
+    var gestio: String? = nil
+    var id: String { nom }
+}
+
+private let botigues: [Botiga] = [
+    Botiga(nom: "Redbubble", domini: "redbubble.com", icon: "bag",
+           visitar: "https://www.redbubble.com/people/guastevi/shop",
+           vendes: "https://www.redbubble.com/account/sales/by_sale",
+           gestio: "https://www.redbubble.com/studio/dashboard"),
+    Botiga(nom: "TeePublic", domini: "teepublic.com", icon: "cart",
+           visitar: "https://www.teepublic.com/user/guastevi",
+           vendes: "https://www.teepublic.com/account",
+           gestio: "https://www.teepublic.com/design/quick_create"),
+    Botiga(nom: "La Tostadora", domini: "latostadora.com", icon: "tshirt",
+           visitar: "https://www.latostadora.com/guastevi/",
+           vendes: "https://www.latostadora.com/login/",
+           gestio: "https://www.latostadora.com/login/"),
+    Botiga(nom: "Amazon Merch", domini: "merch.amazon.com", icon: "shippingbox",
+           visitar: "https://www.amazon.es/s?k=guastevi",
+           vendes: "https://merch.amazon.com/analyze",
+           gestio: "https://merch.amazon.com/manage/products"),
+    Botiga(nom: "Bandcamp", domini: "bandcamp.com", icon: "music.note",
+           visitar: "https://guastevi.bandcamp.com/",
+           vendes: "https://guastevi.bandcamp.com/tools",
+           gestio: "https://bandcamp.com/login"),
+    Botiga(nom: "Spreadshirt", domini: "spreadshirt.es", icon: "tshirt.fill",
+           visitar: "https://www.spreadshirt.es/shop/user/guastevi/",
+           vendes: "https://partner.spreadshirt.es/statistics",
+           gestio: "https://partner.spreadshirt.es/designs"),
+    Botiga(nom: "Webnode", domini: "webnode.com", icon: "globe",
+           visitar: "https://guastevitshirts.webnode.es/",
+           gestio: "https://www.webnode.com/login/"),
+    Botiga(nom: "Instagram", domini: "instagram.com", icon: "camera",
+           visitar: "https://www.instagram.com/guastevitshirts/",
+           gestio: "https://business.facebook.com/latest/home"),
 ]
 
-private struct BotiguesRow: View {
+/// Quadres petits amb el logo de cada botiga. En tocar-ne un: visitar-la o entrar-hi com a propietària.
+private struct BotiguesGrid: View {
+    @Environment(\.openURL) private var openURL
+    private let columns = [GridItem(.adaptive(minimum: 76), spacing: 8)]
+
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(botigues, id: \.nom) { b in
-                    if let url = URL(string: b.url) {
-                        Link(destination: url) {
-                            Label(b.nom, systemImage: b.icon)
-                                .font(Theme.body(14, weight: .semibold, relativeTo: .subheadline))
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(Color(.secondarySystemBackground), in: Capsule())
-                        }
-                        .foregroundStyle(Theme.tint)
-                    }
+        LazyVGrid(columns: columns, spacing: 8) {
+            ForEach(botigues) { b in
+                Menu {
+                    obrir("Visitar la botiga", "eye", b.visitar)
+                    if let v = b.vendes { obrir("Vendes", "chart.bar", v) }
+                    if let g = b.gestio { obrir("Entrar a gestionar", "pencil", g) }
+                } label: {
+                    BotigaTile(botiga: b)
                 }
+                .buttonStyle(.plain)
             }
         }
+    }
+
+    @ViewBuilder private func obrir(_ title: String, _ icon: String, _ url: String) -> some View {
+        if let u = URL(string: url) {
+            Button { openURL(u) } label: { Label(title, systemImage: icon) }
+        }
+    }
+}
+
+private struct BotigaTile: View {
+    let botiga: Botiga
+
+    private var logoURL: URL? {
+        URL(string: "https://www.google.com/s2/favicons?sz=128&domain=\(botiga.domini)")
+    }
+
+    var body: some View {
+        VStack(spacing: 6) {
+            AsyncImage(url: logoURL) { phase in
+                if let image = phase.image {
+                    image.resizable().scaledToFit()
+                } else {
+                    Image(systemName: botiga.icon)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(Theme.tint)
+                }
+            }
+            .frame(width: 30, height: 30)
+            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+
+            Text(botiga.nom)
+                .font(Theme.body(11, weight: .semibold, relativeTo: .caption))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .foregroundStyle(.primary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 4)
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
 
@@ -93,20 +167,58 @@ struct TshirtsView: View {
         var title: String { self == .recents ? "Més recents" : "Per nom" }
     }
 
+    enum Mida: String, CaseIterable {
+        case petit, mitja, gran
+        var title: String { ["Petits", "Mitjans", "Grans"][Self.allCases.firstIndex(of: self)!] }
+        var minimum: CGFloat { [70, 110, 150][Self.allCases.firstIndex(of: self)!] }
+    }
+
+    /// Filtre de la galeria: tots, els que falten per revisar o una categoria.
+    private static let tots = "__tots"
+    private static let perRevisar = "__rev"
+
     @ObservedObject private var store = TshirtsStore.shared
+    @ObservedObject private var cats = TshirtsCats.shared
     @State private var search = ""
+    @State private var filtre = TshirtsView.tots
+    @State private var instrumentFiltre = ""
+    @State private var etiquetaFiltre = ""
+    @AppStorage("tshirts.mida") private var mida: Mida = .petit
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var pickingPhotos = false
     @State private var pickingFiles = false
+    @State private var confirmRepetits = false
+    @State private var traientRepetits = false
+    @ObservedObject private var folderSync = TshirtsFolderSync.shared
     @AppStorage("tshirts.fons") private var fons: TshirtFons = .clar
     @AppStorage("tshirts.ordre") private var ordre: Ordre = .recents
 
-    private let columns = [GridItem(.adaptive(minimum: 150), spacing: 12)]
+    private var columns: [GridItem] { [GridItem(.adaptive(minimum: mida.minimum), spacing: mida == .petit ? 6 : 12)] }
+
+    /// Els dibuixos de la categoria triada (abans de filtrar per instrument i per text).
+    private var inCategory: [Dibuix] {
+        switch filtre {
+        case Self.tots: return store.dibuixos
+        case Self.perRevisar: return store.dibuixos.filter { !cats.revisat($0) }
+        default: return store.dibuixos.filter { cats.categoria($0) == filtre }
+        }
+    }
+
+    /// A l'inici no es veuen tots els dibuixos: només les carpetes (categories i etiquetes)
+    /// i, a sota, els que encara no s'han revisat.
+    private var inici: Bool {
+        filtre == Self.tots && search.isEmpty && etiquetaFiltre.isEmpty && instrumentFiltre.isEmpty
+    }
 
     private var filtered: [Dibuix] {
         let words = search.lowercased().split(separator: " ").map(String.init)
-        let list = store.dibuixos.filter { d in
-            words.isEmpty || words.allSatisfy { d.name.lowercased().contains($0) }
+        let base = inici ? store.dibuixos.filter { !cats.revisat($0) } : inCategory
+        let list = base.filter { d in
+            if !instrumentFiltre.isEmpty && !cats.instrumentsDe(d).contains(instrumentFiltre) { return false }
+            if !etiquetaFiltre.isEmpty && !cats.etiquetes(d).contains(etiquetaFiltre) { return false }
+            guard !words.isEmpty else { return true }
+            let text = ([d.name, cats.categoria(d), cats.instrument(d)] + cats.etiquetes(d)).joined(separator: " ").lowercased()
+            return words.allSatisfy { text.contains($0) }
         }
         switch ordre {
         case .recents: return list.sorted { $0.created > $1.created }
@@ -136,7 +248,9 @@ struct TshirtsView: View {
                         .foregroundStyle(store.errorMessage != nil && store.dibuixos.isEmpty ? .red : .secondary)
                 }
 
-                BotiguesRow()
+                BotiguesGrid()
+
+                if !store.dibuixos.isEmpty { filtres }
 
                 if let u = store.uploading {
                     HStack(spacing: 10) {
@@ -151,14 +265,25 @@ struct TshirtsView: View {
                         .foregroundStyle(.red)
                 }
 
-                LazyVGrid(columns: columns, spacing: 12) {
+                if inici && !store.dibuixos.isEmpty {
+                    carpetes
+                    let n = filtered.count
+                    if n > 0 {
+                        Text(n == 1 ? "1 dibuix per revisar" : "\(n) dibuixos per revisar")
+                            .font(Theme.body(13, weight: .bold, relativeTo: .footnote))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                LazyVGrid(columns: columns, spacing: mida == .petit ? 6 : 12) {
                     ForEach(filtered) { dibuix in
                         NavigationLink {
                             DibuixDetailView(dibuixID: dibuix.id)
                         } label: {
-                            DibuixCell(dibuix: dibuix, fons: fons)
+                            DibuixCell(dibuix: dibuix, fons: fons, showName: mida != .petit)
                         }
                         .buttonStyle(.plain)
+                        .contextMenu { TshirtCategoryMenu(dibuix: dibuix) }
                     }
                 }
             }
@@ -166,15 +291,29 @@ struct TshirtsView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $search, prompt: "Cerca per nom")
-        .refreshable { await store.refresh() }
-        .task { await store.refreshIfNeeded() }
+        .refreshable {
+            await store.refresh()
+            await cats.refresh()
+            TshirtsFolderSync.shared.scheduleSync()
+        }
+        .task {
+            await store.refreshIfNeeded()
+            await cats.refreshIfNeeded()
+            TshirtsFolderSync.shared.scheduleSync()
+        }
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Menu {
                     Picker("Ordre", selection: $ordre) {
                         ForEach(Ordre.allCases, id: \.self) { Text($0.title).tag($0) }
                     }
+                    Picker("Mida", selection: $mida) {
+                        ForEach(Mida.allCases, id: \.self) { Text($0.title).tag($0) }
+                    }
                     Button { fons = fons.next } label: { Label("Canvia el fons", systemImage: fons.icon) }
+                    Button { pickingFiles = true } label: {
+                        Label(folderSync.connected ? "Carpeta d'iCloud connectada (canvia-la)" : "Connecta la carpeta d'iCloud", systemImage: "icloud")
+                    }
                 } label: {
                     Image(systemName: "line.3.horizontal.decrease.circle")
                 }
@@ -208,20 +347,174 @@ struct TshirtsView: View {
     }
 }
 
+extension TshirtsView {
+    /// Les carpetes de l'inici: una per categoria i una per etiqueta, amb el primer dibuix de portada.
+    @ViewBuilder var carpetes: some View {
+        let revisats = store.dibuixos.filter { cats.revisat($0) }
+        let perCat: [(String, [Dibuix])] = cats.categories.compactMap { c in
+            let l = revisats.filter { cats.categoria($0) == c }
+            return l.isEmpty ? nil : (c, l)
+        }
+        let perTag: [(String, [Dibuix])] = cats.allEtiquetes.compactMap { t in
+            let l = store.dibuixos.filter { cats.etiquetes($0).contains(t) }
+            return l.isEmpty ? nil : (t, l)
+        }
+        if !perCat.isEmpty || !perTag.isEmpty {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 10)], spacing: 10) {
+                ForEach(perCat, id: \.0) { c, l in
+                    Button { tria(c) } label: { TshirtCarpeta(nom: c, icona: "folder.fill", dibuixos: l, fons: fons) }
+                        .buttonStyle(.plain)
+                }
+                ForEach(perTag, id: \.0) { t, l in
+                    Button { etiquetaFiltre = t } label: { TshirtCarpeta(nom: t, icona: "tag.fill", dibuixos: l, fons: fons) }
+                        .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    /// Categories (amb quants n'hi ha), instruments de la categoria triada i la revisió un per un.
+    @ViewBuilder var filtres: some View {
+        let pendents = store.dibuixos.filter { !cats.revisat($0) }.count
+        let repetits = store.repetits.count
+        VStack(alignment: .leading, spacing: 8) {
+            if repetits > 0 {
+                Button { confirmRepetits = true } label: {
+                    HStack {
+                        Image(systemName: "square.on.square")
+                        Text(traientRepetits ? "Traient els repetits…" : "Hi ha \(repetits) dibuixos repetits. Treu-los")
+                        Spacer()
+                        if traientRepetits { ProgressView() }
+                    }
+                    .font(Theme.body(15, weight: .semibold, relativeTo: .subheadline))
+                    .padding(12)
+                    .background(Color.orange.opacity(0.18), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .disabled(traientRepetits)
+                .confirmationDialog("S'han pujat dos cops (mateix nom i mateixa mida). Es queda el primer i els altres van a la paperera de Drive (s'hi poden recuperar 30 dies).",
+                                    isPresented: $confirmRepetits, titleVisibility: .visible) {
+                    Button("Treu-ne \(repetits)", role: .destructive) {
+                        traientRepetits = true
+                        Task { await store.treuRepetits(); traientRepetits = false }
+                    }
+                }
+            }
+            if let m = folderSync.lastMessage {
+                Label(m, systemImage: "icloud").font(.footnote).foregroundStyle(.secondary)
+            }
+            if pendents > 0 {
+                NavigationLink { TshirtsReviewView() } label: {
+                    HStack {
+                        Image(systemName: "checklist")
+                        Text("Revisa les categories un per un")
+                        Spacer()
+                        Text("\(pendents)").bold()
+                        Image(systemName: "chevron.right").font(.footnote)
+                    }
+                    .font(Theme.body(15, weight: .semibold, relativeTo: .subheadline))
+                    .padding(12)
+                    .background(Theme.tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    TshirtChip(title: "Inici", selected: filtre == Self.tots && etiquetaFiltre.isEmpty) { tria(Self.tots) }
+                    ForEach(cats.categories, id: \.self) { c in
+                        let n = store.dibuixos.filter { cats.categoria($0) == c }.count
+                        if n > 0 { TshirtChip(title: c, count: n, selected: filtre == c) { tria(c) } }
+                    }
+                    if pendents > 0 {
+                        TshirtChip(title: "Per revisar", count: pendents, selected: filtre == Self.perRevisar) { tria(Self.perRevisar) }
+                    }
+                }
+            }
+            let instruments = cats.instruments(in: inCategory)
+            if filtre != Self.tots && instruments.count > 1 {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        TshirtChip(title: "Tots els instruments", selected: instrumentFiltre.isEmpty) { instrumentFiltre = "" }
+                        ForEach(instruments, id: \.self) { i in
+                            TshirtChip(title: i, selected: instrumentFiltre == i) { instrumentFiltre = i }
+                        }
+                    }
+                }
+            }
+            let etiquetes = cats.allEtiquetes
+            if !etiquetes.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "tag").foregroundStyle(.secondary)
+                        ForEach(etiquetes, id: \.self) { t in
+                            let n = inCategory.filter { cats.etiquetes($0).contains(t) }.count
+                            TshirtChip(title: t, count: n, selected: etiquetaFiltre == t) {
+                                etiquetaFiltre = etiquetaFiltre == t ? "" : t
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func tria(_ f: String) {
+        filtre = f
+        instrumentFiltre = ""
+        etiquetaFiltre = ""
+    }
+}
+
+/// Una carpeta de l'inici: portada (el primer dibuix), nom i quants n'hi ha.
+private struct TshirtCarpeta: View {
+    let nom: String
+    let icona: String
+    let dibuixos: [Dibuix]
+    let fons: TshirtFons
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            fons.view
+                .aspectRatio(1, contentMode: .fit)
+                .overlay {
+                    if let d = dibuixos.first { DibuixImage(id: d.id, size: .thumb).padding(8) }
+                }
+                .overlay(alignment: .topLeading) {
+                    Image(systemName: icona)
+                        .font(.caption)
+                        .foregroundStyle(Theme.tint)
+                        .padding(6)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Color.primary.opacity(0.08)))
+            HStack(spacing: 4) {
+                Text(nom).lineLimit(1)
+                Spacer(minLength: 0)
+                Text("\(dibuixos.count)").foregroundStyle(.secondary)
+            }
+            .font(Theme.body(13, weight: .semibold, relativeTo: .footnote))
+        }
+        .contentShape(Rectangle())
+    }
+}
+
 private struct DibuixCell: View {
     let dibuix: Dibuix
     let fons: TshirtFons
+    var showName = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             fons.view
                 .aspectRatio(1, contentMode: .fit)
-                .overlay(DibuixImage(id: dibuix.id, size: .thumb).padding(8))
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.primary.opacity(0.08)))
-            Text(dibuix.name)
-                .font(Theme.body(14, weight: .medium, relativeTo: .subheadline))
-                .lineLimit(1)
+                .overlay(DibuixImage(id: dibuix.id, size: .thumb).padding(showName ? 8 : 4))
+                .clipShape(RoundedRectangle(cornerRadius: showName ? 14 : 8, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: showName ? 14 : 8, style: .continuous).stroke(Color.primary.opacity(0.08)))
+            if showName {
+                Text(dibuix.name)
+                    .font(Theme.body(14, weight: .medium, relativeTo: .subheadline))
+                    .lineLimit(1)
+            }
         }
         .contentShape(Rectangle())
     }
@@ -265,6 +558,7 @@ struct DibuixDetailView: View {
     let dibuixID: String
 
     @ObservedObject private var store = TshirtsStore.shared
+    @ObservedObject private var cats = TshirtsCats.shared
     @Environment(\.dismiss) private var dismiss
     @AppStorage("tshirts.fons") private var fons: TshirtFons = .clar
     @State private var shareURL: URL?
@@ -302,6 +596,17 @@ struct DibuixDetailView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(dibuix.name)
                             .font(Theme.display(22))
+                        Menu {
+                            TshirtCategoryMenu(dibuix: dibuix)
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "folder")
+                                Text([cats.categoria(dibuix), cats.instrument(dibuix)].filter { !$0.isEmpty }.joined(separator: " · ")
+                                    .ifEmpty("Sense categoria"))
+                                if !cats.revisat(dibuix) { Text("(suggeriment)").foregroundStyle(.secondary) }
+                            }
+                            .font(Theme.body(14, weight: .semibold, relativeTo: .subheadline))
+                        }
                         if let date = dibuix.date {
                             Text(date.formatted(date: .long, time: .shortened))
                                 .font(Theme.body(14, relativeTo: .subheadline))
@@ -379,4 +684,8 @@ struct DibuixDetailView: View {
             self.error = error.localizedDescription
         }
     }
+}
+
+private extension String {
+    func ifEmpty(_ other: String) -> String { isEmpty ? other : self }
 }

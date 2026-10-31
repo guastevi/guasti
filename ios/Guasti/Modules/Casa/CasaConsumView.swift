@@ -121,7 +121,7 @@ struct CasaConsumView: View {
             }
         }
         .navigationTitle("Consum any a any")
-        .tint(CasaTheme.green)
+        .tint(.primary)
         .refreshable { await store.load() }
     }
 
