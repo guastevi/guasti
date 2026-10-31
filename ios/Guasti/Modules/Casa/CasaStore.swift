@@ -11,6 +11,8 @@ final class CasaStore: ObservableObject {
     @Published var errorMessage: String?
     /// Mentre es porten els documents del correu: quants n'han entrat.
     @Published private(set) var important: Int?
+    /// L'últim cop, els correus ja s'estaven portant sols de fons.
+    @Published private(set) var correusDeFons = false
 
     private let dir: URL = {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -152,11 +154,13 @@ final class CasaStore: ObservableObject {
         important = 0
         defer { important = nil }
         var total = 0
+        correusDeFons = false
         while true {
             let r: CasaImportResposta = try await call("casa.importaCorreus", ["limit": 10])
             set(r.dades)
             total += r.nous
             important = total
+            if r.deFons == true { correusDeFons = true; break }
             if r.pendents == 0 || r.nous == 0 { break }
         }
         UserDefaults.standard.set(true, forKey: "casaCorreusImportats")

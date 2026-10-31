@@ -57,6 +57,11 @@ struct CasaView: View {
                 }
                 pisSection
                 if !store.avisos.isEmpty { avisosSection }
+                Section {
+                    NavigationLink { CasaConsumView() } label: {
+                        Label("Consum de llum, aigua i gas", systemImage: "chart.bar.xaxis")
+                    }
+                }
                 Section("Apartats") {
                     LazyVGrid(columns: columns, spacing: 10) {
                         ForEach(CasaTipus.allCases) { t in
@@ -116,7 +121,11 @@ struct CasaView: View {
         Task {
             do {
                 let n = try await store.importaCorreus()
-                importMsg = n == 0 ? "Ja tens tots els documents del correu." : "S'han afegit \(n) documents del correu. A partir d'ara, els nous entren sols cada matí."
+                if store.correusDeFons {
+                    importMsg = "Les factures que falten s'estan portant soles, una mica cada minut. Estira cap avall d'aquí a una estona per veure-les."
+                } else {
+                    importMsg = n == 0 ? "Ja tens tots els documents del correu." : "S'han afegit \(n) documents del correu. A partir d'ara, els nous entren sols cada matí."
+                }
             } catch {
                 importMsg = error.localizedDescription
             }
@@ -269,7 +278,14 @@ struct CasaLlistaView: View {
     var body: some View {
         let items = store.registres(tipus)
         List {
-            if tipus == .factura, !items.isEmpty { resumFactures(items) }
+            if tipus == .factura, !items.isEmpty {
+                resumFactures(items)
+                Section {
+                    NavigationLink { CasaConsumView() } label: {
+                        Label("Consum any a any", systemImage: "chart.bar.xaxis")
+                    }
+                }
+            }
             if tipus == .renda, let r = store.rendaActual {
                 Section {
                     LabeledContent("Renda d'ara", value: CasaFmt.euros(r) + "/mes")
