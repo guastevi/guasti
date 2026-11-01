@@ -10,15 +10,15 @@
     <string>-c</string>
     <string>"$HOME/Library/Application Support/Guasti/actualitza-carpeta.sh"</string>
   </array>
-  <!-- Cada dia a les 10h (si el Mac dormia, en despertar-se) i cada cop que s'encén -->
+  <!-- Cada dilluns a les 10h (si el Mac dormia, en despertar-se) -->
   <key>StartCalendarInterval</key>
   <dict>
+    <key>Weekday</key>
+    <integer>1</integer>
     <key>Hour</key>
     <integer>10</integer>
     <key>Minute</key>
     <integer>0</integer>
   </dict>
-  <key>RunAtLoad</key>
-  <true/>
 </dict>
 </plist>
