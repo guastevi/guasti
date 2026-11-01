@@ -82,6 +82,8 @@ function handle_(p) {
     'tshirts.rename': () => tshirtsRename_(p.id, p.name),
     'tshirts.delete': () => tshirtsDelete_(p.id),
     'copies.fes': () => copiaSeguretat_(),
+    // La darrera còpia en un .zip (base64), perquè el Mac la desi a Documents i vagi a iCloud.
+    'copies.zip': () => copiesZip_(),
   };
 
   try { copiesProgramaAutomatic_(); } catch (err) {}
@@ -2276,4 +2278,19 @@ function copiaSeguretat_() {
   }
   PropertiesService.getScriptProperties().setProperty('COPIES_DARRERA', avui + (errors.length ? ' · errors: ' + errors.join(', ') : ''));
   return { dia: avui, carpeta: arrel.getUrl(), fets: fets, errors: errors };
+}
+
+function copiesZip_() {
+  const arrel = copiesCarpeta_();
+  let dies = [];
+  const it = arrel.getFolders();
+  while (it.hasNext()) { const f = it.next(); if (/^\d{4}-\d{2}-\d{2}$/.test(f.getName())) dies.push(f); }
+  if (!dies.length) { copiaSeguretat_(); return copiesZip_(); }
+  dies.sort((a, b) => a.getName() < b.getName() ? 1 : -1);
+  const dia = dies[0];
+  const blobs = [];
+  const fs = dia.getFiles();
+  while (fs.hasNext()) blobs.push(fs.next().getBlob());
+  const zip = Utilities.zip(blobs, 'dades-' + dia.getName() + '.zip');
+  return { dia: dia.getName(), zip: Utilities.base64Encode(zip.getBytes()) };
 }
