@@ -1,6 +1,6 @@
 #!/bin/bash
 # Manté al dia la carpeta "Guasti - tot el codi i dades" del Mac.
-# L'executa el Mac sol cada dia (cat.guasti.carpeta.plist). Si hi ha canvis nous a GitHub,
+# L'executa el Mac sol cada dilluns (cat.guasti.carpeta.plist). Si hi ha canvis nous a GitHub,
 # substitueix el codi per la versió nova, refà el .zip (esborra l'antic) i, si el Google Drive
 # del Mac està instal·lat, hi posa la còpia de seguretat de les dades més recent.
 # Ús manual: bash actualitza-carpeta.sh [--forca]
