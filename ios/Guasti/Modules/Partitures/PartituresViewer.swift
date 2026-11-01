@@ -97,6 +97,16 @@ struct PDocPreview: View {
                 .padding(kind == .audio ? 14 : 0)
             } else if let fileURL, kind == .image, let img = UIImage(contentsOfFile: fileURL.path) {
                 Image(uiImage: img).resizable().scaledToFit()
+                    .overlay(alignment: .topTrailing) {
+                        ShareLink(item: fileURL) {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.system(size: 15, weight: .bold)).foregroundStyle(.white)
+                                .frame(width: 38, height: 38)
+                                .background(Color.black.opacity(0.6), in: Circle())
+                        }
+                        .padding(8)
+                        .accessibilityLabel("Comparteix o desa")
+                    }
             } else {
                 infoCard(message: info?.tooBig == true ? "El fitxer fa més de 30 MB i no es pot obrir dins l'app. Obre'l al Drive." : nil)
             }
