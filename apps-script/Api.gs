@@ -81,7 +81,10 @@ function handle_(p) {
     'tshirts.upload': () => withLock_(() => tshirtsUpload_(p.name, p.base64)),
     'tshirts.rename': () => tshirtsRename_(p.id, p.name),
     'tshirts.delete': () => tshirtsDelete_(p.id),
+    'copies.fes': () => copiaSeguretat_(),
   };
+
+  try { copiesProgramaAutomatic_(); } catch (err) {}
 
   const fn = actions[p.action];
   if (!fn) return json_({ ok: false, error: 'Acció desconeguda: ' + p.action });
@@ -2188,4 +2191,89 @@ function partitures_(fn, args) {
   const f = PARTITURES_[fn];
   if (!f) throw new Error('Funció de partitures desconeguda: ' + fn);
   return f.apply(null, args);
+}
+
+// ---------------------------------------------------------------- còpies de seguretat
+// Cada nit, una còpia en Excel de tots els fulls i del codi dels scripts, a la carpeta
+// de Drive "Guasti - còpies de seguretat" (una subcarpeta per dia). Es guarden 60 dies.
+
+const COPIES_ = {
+  carpeta: 'Guasti - còpies de seguretat',
+  dies: 60,
+  fulls: [
+    ['Armari Guasteví - Peces', '1P3LJ9pCNz01JyPV6JMbxS-V_RaxIBRMWBfu9hgCOrkM'],
+    ['Armari Guasteví - Fotos', '1N6VQcSqTs_k8qwNxb1_PAt9bu70eoUkWOqj5V1G9tTs'],
+    ['Economia Guasti', '1mREzAqTLYNk7e6Znj6SAwJiIRxpcmq2QdbAi03VfqLQ'],
+    ['Arxiu de Repertori', '1iNzkRGe8l0Ki-wOdAdvOQyxoYz0yy4pPnpNUkPZYmVs'],
+  ],
+  scripts: [
+    ['Publicador Auditori', '1aAuJKdAQrnD6RFoVmL5L2EHoyUNKUn5o3MnXGG0bo-pXU9huqzl7ANd_'],
+    ['Arxiu de Repertori (script)', '17MGRuciqh87j1fR9FVzTUlh7ejrQOyhfukT4V3sjceuyXt-kNaRmy-Hf'],
+  ],
+};
+
+/** Instal·la (un sol cop) l'activador de cada nit a les 3h. */
+function copiesProgramaAutomatic_() {
+  const props = PropertiesService.getScriptProperties();
+  if (props.getProperty('COPIES_ACTIU') === '1') return;
+  const ja = ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'copiaSeguretatDiaria');
+  if (!ja) ScriptApp.newTrigger('copiaSeguretatDiaria').timeBased().everyDays(1).atHour(3).create();
+  props.setProperty('COPIES_ACTIU', '1');
+}
+
+/** L'executa l'activador cada nit. També es pot executar a mà des de l'editor. */
+function copiaSeguretatDiaria() {
+  copiaSeguretat_();
+}
+
+function copiesCarpeta_() {
+  const props = PropertiesService.getScriptProperties();
+  const saved = props.getProperty('COPIES_FOLDER_ID');
+  if (saved) {
+    try { const f = DriveApp.getFolderById(saved); if (!f.isTrashed()) return f; } catch (err) {}
+  }
+  const it = DriveApp.getRootFolder().getFoldersByName(COPIES_.carpeta);
+  const f = it.hasNext() ? it.next() : DriveApp.getRootFolder().createFolder(COPIES_.carpeta);
+  props.setProperty('COPIES_FOLDER_ID', f.getId());
+  return f;
+}
+
+function copiaSeguretat_() {
+  const avui = Utilities.formatDate(new Date(), 'Europe/Madrid', 'yyyy-MM-dd');
+  const arrel = copiesCarpeta_();
+  const vell = arrel.getFoldersByName(avui);
+  while (vell.hasNext()) vell.next().setTrashed(true); // si es repeteix el mateix dia, la nova substitueix
+  const dia = arrel.createFolder(avui);
+  const token = ScriptApp.getOAuthToken();
+  const opts = { headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true };
+  const fets = [], errors = [];
+
+  const fulls = COPIES_.fulls.slice();
+  const casa = PropertiesService.getScriptProperties().getProperty('CASA_SHEET_ID');
+  if (casa) fulls.push(['Casa Guasti', casa]);
+  fulls.forEach(([nom, id]) => {
+    const r = UrlFetchApp.fetch('https://docs.google.com/spreadsheets/d/' + id + '/export?format=xlsx', opts);
+    if (r.getResponseCode() === 200) { dia.createFile(r.getBlob().setName(nom + '.xlsx')); fets.push(nom); }
+    else errors.push(nom + ' (' + r.getResponseCode() + ')');
+  });
+
+  const scripts = [['Guasti API', ScriptApp.getScriptId()]].concat(COPIES_.scripts);
+  scripts.forEach(([nom, id]) => {
+    const r = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + id +
+      '/export?mimeType=' + encodeURIComponent('application/vnd.google-apps.script+json'), opts);
+    if (r.getResponseCode() === 200) {
+      dia.createFile(Utilities.newBlob(r.getContentText(), 'application/json', nom + ' (codi).json'));
+      fets.push(nom);
+    } else errors.push(nom + ' (' + r.getResponseCode() + ')');
+  });
+
+  // Esborra (a la paperera, 30 dies) les còpies de fa més de 60 dies.
+  const limit = Utilities.formatDate(new Date(Date.now() - COPIES_.dies * 864e5), 'Europe/Madrid', 'yyyy-MM-dd');
+  const totes = arrel.getFolders();
+  while (totes.hasNext()) {
+    const f = totes.next();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(f.getName()) && f.getName() < limit) f.setTrashed(true);
+  }
+  PropertiesService.getScriptProperties().setProperty('COPIES_DARRERA', avui + (errors.length ? ' · errors: ' + errors.join(', ') : ''));
+  return { dia: avui, carpeta: arrel.getUrl(), fets: fets, errors: errors };
 }
