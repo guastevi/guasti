@@ -15,6 +15,19 @@ mkdir -p "$ESTAT" "$HOME/Library/LaunchAgents"
 OK_API=0
 
 echo "1/3 · Publicant la Guasti API…"
+# Si el Mac no té node, en baixem un de portàtil (no cal ser administrador).
+if ! command -v clasp >/dev/null 2>&1 && ! command -v npx >/dev/null 2>&1; then
+  ARCH=$(uname -m); [ "$ARCH" = "x86_64" ] && ARCH=x64
+  NV=v22.11.0
+  if [ ! -x "$ESTAT/node/bin/node" ]; then
+    echo "   Baixant node (un sol cop)…"
+    T0=$(mktemp -d)
+    curl -fsSL "https://nodejs.org/dist/$NV/node-$NV-darwin-$ARCH.tar.gz" | tar -xz -C "$T0" \
+      && rm -rf "$ESTAT/node" && mv "$T0/node-$NV-darwin-$ARCH" "$ESTAT/node"
+    rm -rf "$T0"
+  fi
+  [ -x "$ESTAT/node/bin/node" ] && export PATH="$ESTAT/node/bin:$PATH"
+fi
 CLASP=""
 if command -v clasp >/dev/null 2>&1; then CLASP="clasp"; elif command -v npx >/dev/null 2>&1; then CLASP="npx -y @google/clasp"; fi
 if [ -z "$CLASP" ]; then
