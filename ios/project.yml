@@ -30,6 +30,7 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         NSCameraUsageDescription: Per fer fotos de les peces de l'armari i per a les publicacions a xarxes.
+        NSPhotoLibraryAddUsageDescription: Per desar a Fotos les imatges que comparteixes des de Guasti.
         NSFaceIDUsageDescription: Per mostrar les peces privades.
         ITSAppUsesNonExemptEncryption: false
         UIAppFonts:

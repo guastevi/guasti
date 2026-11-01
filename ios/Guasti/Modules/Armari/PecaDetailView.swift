@@ -110,7 +110,7 @@ struct PecaDetailView: View {
             Text("Les fotos aniran a la paperera de Drive.")
         }
         .fullScreenCover(item: $viewing) { foto in
-            PhotoViewer(fotos: fotos, start: foto.id)
+            PhotoViewer(fotos: fotos, start: foto.id, title: peca.nom)
         }
         .alert("No s'ha pogut fer", isPresented: Binding(get: { errorText != nil }, set: { if !$0 { errorText = nil } })) {
             Button("D'acord", role: .cancel) {}
@@ -213,8 +213,10 @@ struct PecaDetailView: View {
 struct PhotoViewer: View {
     let fotos: [Foto]
     let start: String
+    var title = ""
     @Environment(\.dismiss) private var dismiss
     @State private var current: String?
+    @State private var sharing = false
     @State private var drag: CGFloat = 0
     @State private var zoomed = false
 
@@ -261,6 +263,11 @@ struct PhotoViewer: View {
             .zIndex(1)
             .accessibilityLabel("Tanca")
 
+            ShareCircleButton(busy: sharing) { share() }
+                .padding(16)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .zIndex(1)
+
             if fotos.count > 1 {
                 HStack(spacing: 6) {
                     ForEach(fotos) { f in
@@ -275,6 +282,20 @@ struct PhotoViewer: View {
             }
         }
         .onAppear { current = start }
+    }
+
+    /// Comparteix o desa la foto que es veu ara, a la mida més gran.
+    private func share() {
+        guard let foto = fotos.first(where: { $0.id == (current ?? start) }) ?? fotos.first else { return }
+        let n = (fotos.firstIndex(of: foto) ?? 0) + 1
+        let name = (title.isEmpty ? "Foto" : title) + (fotos.count > 1 ? " \(n)" : "")
+        sharing = true
+        Task {
+            defer { sharing = false }
+            guard let image = await PhotoLoader.shared.image(path: foto.path, size: .full),
+                  let url = ShareSheet.imageFile(image, name: name) else { return }
+            ShareSheet.present([url])
+        }
     }
 }
 

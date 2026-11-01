@@ -27,6 +27,7 @@ struct FaristolView: View {
     @State private var dirty = Set<String>()
     @State private var confirmClear = false
     @State private var redraw = 0
+    @State private var sharing = false
     @FocusState private var keys: Bool
 
     init(docs: [Fila], title: String, startDrawing: Bool = false, start: Int = 0) {
@@ -145,6 +146,12 @@ struct FaristolView: View {
                 if pageCount > 0 { Text("Pàg. \(p) / \(pageCount)").font(.system(size: 13)).foregroundStyle(.white).fixedSize() }
                 Button(drawing ? "Fet" : "Llapis") { setDrawing(!drawing) }.buttonStyle(PBtn(small: true))
                 Button("Anot.: " + (showAnn ? "Sí" : "No")) { showAnn.toggle(); redraw += 1 }.buttonStyle(PBtn(small: true))
+                Button { share() } label: {
+                    if sharing { ProgressView().controlSize(.small) } else { Image(systemName: "square.and.arrow.up") }
+                }
+                .buttonStyle(PBtn(small: true))
+                .disabled(sharing)
+                .accessibilityLabel("Comparteix o desa el PDF")
             }
         }
         .padding(.horizontal, 12).padding(.vertical, 10)
@@ -262,6 +269,28 @@ struct FaristolView: View {
     private func close() {
         saveAnn(i)
         dismiss()
+    }
+
+    /// Comparteix o desa el PDF que es veu ara (amb les anotacions, si es mostren).
+    private func share() {
+        guard i < docs.count else { return }
+        let d = docs[i], id = d["ID"] ?? ""
+        let a = showAnn ? ann[id] : nil
+        sharing = true
+        Task {
+            defer { sharing = false }
+            do {
+                var data = try await store.pdfData(Arxiu.fileId(d))
+                if let a, !a.isEmpty { data = PDFTools.burn(data, a) }
+                var name = (d["Títol"] ?? "").isEmpty ? title : (d["Títol"] ?? "")
+                if name.isEmpty { name = "Partitura" }
+                if !name.lowercased().hasSuffix(".pdf") { name += ".pdf" }
+                guard let url = ShareSheet.tempFile(data, name: name) else { return }
+                ShareSheet.present([url])
+            } catch {
+                self.error = error.localizedDescription
+            }
+        }
     }
 }
 
