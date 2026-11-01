@@ -37,14 +37,14 @@ if [ "$SHA" != "$ANTIC" ] || [ "${1:-}" = "--forca" ]; then
 fi
 
 # Còpia de les dades: la fa la Guasti API cada nit al Drive. El Mac en baixa la darrera
-# (la clau és a api.conf, fora de la carpeta, amb URL=... i KEY=...) i la desa a Documents,
+# (la clau és a api.conf, fora de la carpeta, amb URL=... i TOKEN=...) i la desa a Documents,
 # que va a iCloud: així hi ha còpia a Google i a Apple.
 if [ -f "$ESTAT/api.conf" ]; then
   # shellcheck disable=SC1091
   . "$ESTAT/api.conf"
   RESP="$ESTAT/resposta.json"
   if curl -fsSL -X POST -H 'Content-Type: application/json' \
-       --data "{\"action\":\"copies.zip\",\"k\":\"$KEY\"}" "$URL" -o "$RESP" \
+       --data "{\"action\":\"copies.zip\",\"t\":\"$TOKEN\"}" "$URL" -o "$RESP" \
      && grep -q '"ok":true' "$RESP"; then
     DIA=$(sed -E 's/.*"dia":"([0-9-]+)".*/\1/' "$RESP")
     if [ "$DIA" != "$(cat "$ESTAT/darreres-dades" 2>/dev/null || true)" ]; then

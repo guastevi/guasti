@@ -44,7 +44,14 @@ function doPost(e) {
   return handle_(Object.assign({}, (e && e.parameter) || {}, body));
 }
 
+// Clau pròpia del Mac per baixar les còpies (la posa l'instal·lador del Mac; buida al repositori).
+const COPIES_TOKEN_MAC = '';
+
 function handle_(p) {
+  if (p.action === 'copies.zip' && p.t && p.t === copiesTokenMac_()) {
+    try { copiesProgramaAutomatic_(); return json_(Object.assign({ ok: true }, copiesZip_())); }
+    catch (err) { return json_({ ok: false, error: String((err && err.message) || err) }); }
+  }
   const key = PropertiesService.getScriptProperties().getProperty('API_KEY');
   if (!key || p.k !== key) return json_({ ok: false, error: 'Clau incorrecta' });
 
@@ -2293,4 +2300,11 @@ function copiesZip_() {
   while (fs.hasNext()) blobs.push(fs.next().getBlob());
   const zip = Utilities.zip(blobs, 'dades-' + dia.getName() + '.zip');
   return { dia: dia.getName(), zip: Utilities.base64Encode(zip.getBytes()) };
+}
+
+/** La clau del Mac: si el codi en porta una de nova, es desa a les propietats (així es manté encara que es torni a publicar el codi del repositori). */
+function copiesTokenMac_() {
+  const props = PropertiesService.getScriptProperties();
+  if (COPIES_TOKEN_MAC && props.getProperty('COPIES_TOKEN_MAC') !== COPIES_TOKEN_MAC) props.setProperty('COPIES_TOKEN_MAC', COPIES_TOKEN_MAC);
+  return props.getProperty('COPIES_TOKEN_MAC') || '';
 }
